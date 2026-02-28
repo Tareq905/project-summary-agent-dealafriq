@@ -1,4 +1,4 @@
-# AI Agent Server for Project Management System
+# AI Agent for Project Management System
 
 ## Overview
 
