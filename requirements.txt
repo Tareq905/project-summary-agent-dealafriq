@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic
+requests
+httpx
+apscheduler
+langchain
+faiss-cpu
+tiktoken
+openai
+sentence-transformers
+langchain-text-splitters
+langchain-core

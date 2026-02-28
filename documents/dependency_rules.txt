@@ -1,0 +1,15 @@
+[SECTION] DEPENDENCY_TRACKING
+Inbound dependencies must be logged.
+Outbound dependencies must be logged.
+External prerequisite must be validated before milestone start.
+
+[SECTION] ALIGNMENT_PROCESS
+L3 plans updated weekly by project managers.
+Dependency report shared with PMO.
+
+[SECTION] IMPACT_RULE
+Delayed dependency impacts milestone delivery timeline.
+
+[SECTION] CONTRACT_DEPENDENCY
+Signed agreement may act as execution prerequisite.
+Cross team dependencies must be validated before execution.

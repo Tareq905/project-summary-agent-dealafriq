@@ -1,0 +1,18 @@
+[SECTION] SPRINT_REVIEW
+Sprint goals reviewed in weekly sync.
+
+[SECTION] TECHNICAL_DELAY
+API integration delay discussed in meeting.
+
+[SECTION] TASK_REALLOCATION
+Backend tasks reassigned during execution.
+
+[SECTION] PERFORMANCE_RISK
+UI performance issue flagged as delivery concern.
+
+[SECTION] RESOURCE_NEED
+Additional QA support required for integration risk.
+
+[SECTION] ACTION_POINTS
+Documentation update required.
+Login issue resolution required.

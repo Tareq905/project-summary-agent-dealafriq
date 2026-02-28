@@ -1,0 +1,22 @@
+[SECTION] SCOPE_HEALTH
+Scope alignment monitored weekly.
+
+[SECTION] BUDGET_HEALTH
+Budget utilization monitored.
+
+[SECTION] RAID_HEALTH
+RAID status affects delivery risk.
+
+[SECTION] RESOURCE_HEALTH
+Team availability affects progress.
+
+[SECTION] VENDOR_HEALTH
+Vendor performance monitored.
+
+[SECTION] STATUS_RULE
+Red indicates delivery risk.
+Amber indicates schedule concern.
+Green indicates aligned execution.
+
+[SECTION] ESCALATION_TRIGGER
+Risk escalation requires governance action.

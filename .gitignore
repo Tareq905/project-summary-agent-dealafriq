@@ -1,0 +1,93 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Virtual Environment
+.venv/
+venv/
+Lib/
+Include/
+Scripts/
+
+# Environment Variables
+.env
+.env.*
+*.env
+
+# VS Code
+.vscode/
+.history/
+
+# PyCharm
+.idea/
+*.iml
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# SQLite
+*.sqlite3
+db.sqlite3
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# FastAPI cache
+*.db
+*.sqlite
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Docker
+*.tar
+*.gz
+*.zip
+
+# Uvicorn
+uvicorn.log
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Temporary Files
+*.tmp
+*.temp
+*.swp
+
+# Secrets
+secrets.json
+config.json

@@ -1,0 +1,19 @@
+[SECTION] PROJECT_EXECUTION_MODEL
+Milestone driven delivery model is followed.
+Project scope must be finalized before execution begins.
+Client and contractor share delivery responsibility.
+
+[SECTION] CHANGE_MANAGEMENT
+All scope changes require written approval.
+Execution plan modification must be documented.
+
+[SECTION] ROLE_STRUCTURE
+Project roles include Lead, Assist, Approve.
+Acceptance validation required for all deliverables.
+
+[SECTION] OWNERSHIP_TRANSFER
+Ownership transfers to client after acceptance.
+
+[SECTION] GOVERNANCE_CONTROL
+Weekly dependency alignment review required.
+RAID monitoring mandatory for governance.

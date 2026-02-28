@@ -1,0 +1,21 @@
+[SECTION] RISK_DEFINITION
+Future delivery impact is classified as Risk.
+
+[SECTION] ISSUE_DEFINITION
+Current execution problem is classified as Issue.
+
+[SECTION] DEPENDENCY_DEFINITION
+External prerequisite required for task execution is Dependency.
+
+[SECTION] DECISION_DEFINITION
+Approved execution path is classified as Decision.
+
+[SECTION] DETECTION_SOURCE
+Email communication used for RAID detection.
+Meeting transcript used for RAID detection.
+
+[SECTION] CLASSIFICATION_RULE
+Task delay is Risk.
+Environment outage is Issue.
+Signed SOW requirement is Dependency.
+Approved workaround is Decision.

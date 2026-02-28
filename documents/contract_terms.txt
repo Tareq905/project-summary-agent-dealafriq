@@ -1,0 +1,18 @@
+[SECTION] PAYMENT_LOGISTICS
+Financial transfer must be pre informed.
+Distribution requires approved recipient list.
+
+[SECTION] SUPPLIER_VALIDATION
+Supplier ownership verified.
+Supplier location verified.
+Market involvement verified.
+
+[SECTION] CONTRACT_RULE
+Exchange rate agreed before execution.
+Contract duration defined.
+
+[SECTION] DISPUTE_HANDLING
+Dispute resolved through mediation.
+
+[SECTION] MODIFICATION_RULE
+Contract modification requires mutual agreement.

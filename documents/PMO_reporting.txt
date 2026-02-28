@@ -1,0 +1,21 @@
+[SECTION] WEEKLY_REPORTING
+Weekly project status report required.
+
+[SECTION] REPORT_CONTENT
+Accomplishment tracking mandatory.
+Pending task tracking mandatory.
+
+[SECTION] ESCALATION_RULE
+Critical issue must be escalated to PMO.
+
+[SECTION] GOVERNANCE_CYCLE
+Weekly governance monitoring required.
+Stakeholder reporting mandatory.
+
+[SECTION] DELIVERY_TRACKING
+Sprint progress monitored.
+Backlog monitored.
+Vendor coordination tracked.
+
+[SECTION] DECISION_LOG
+Decision log maintained for execution reference.
