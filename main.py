@@ -1,7 +1,7 @@
 import os
 import sys
 
-# --- PORTABLE DLL LOADER (No Hardcoding) ---
+# --- PORTABLE DLL LOADER ---
 def load_dlls():
     if sys.platform == 'win32':
         # 1. Get the base path of the virtual environment
