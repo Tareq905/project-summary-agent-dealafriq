@@ -1,21 +1,74 @@
-[SECTION] RISK_DEFINITION
-Future delivery impact is classified as Risk.
+[SECTION] ASSUMPTION_DEFINITION
+Planning belief accepted as true but not yet validated is classified as Assumption.
 
-[SECTION] ISSUE_DEFINITION
-Current execution problem is classified as Issue.
+[SECTION] RAIDD_STRUCTURE
+Project monitoring includes the following governance categories:
+Risk
+Assumption
+Issue
+Dependency
+Decision
 
-[SECTION] DEPENDENCY_DEFINITION
-External prerequisite required for task execution is Dependency.
+These categories form the RAIDD register used for governance reporting.
 
-[SECTION] DECISION_DEFINITION
-Approved execution path is classified as Decision.
+[SECTION] RISK_DETECTION_PATTERN
+Statements indicating possible future delivery impact must be classified as Risk.
 
-[SECTION] DETECTION_SOURCE
-Email communication used for RAID detection.
-Meeting transcript used for RAID detection.
+Examples:
+may delay delivery
+could impact timeline
+potential failure
+environment instability
+possible performance degradation
 
-[SECTION] CLASSIFICATION_RULE
-Task delay is Risk.
-Environment outage is Issue.
-Signed SOW requirement is Dependency.
-Approved workaround is Decision.
+[SECTION] ISSUE_DETECTION_PATTERN
+Statements describing current execution problems must be classified as Issue.
+
+Examples:
+system failure
+service outage
+test failure
+environment error
+integration blocked
+
+[SECTION] DEPENDENCY_DETECTION_PATTERN
+Statements referencing external prerequisite conditions must be classified as Dependency.
+
+Examples:
+waiting for vendor delivery
+requires approval
+dependent on external system
+pending environment access
+
+[SECTION] DECISION_DETECTION_PATTERN
+Statements confirming approved execution direction must be classified as Decision.
+
+Examples:
+team agreed
+stakeholders approved
+plan finalized
+scope confirmed
+
+[SECTION] ASSUMPTION_DETECTION_PATTERN
+Statements referencing expected conditions without validation must be classified as Assumption.
+
+Examples:
+expected to be available
+assuming compatibility
+anticipated delivery
+planned resource availability
+
+[SECTION] RAIDD_EXTRACTION_RULE
+RAIDD elements must be extracted from the following communication sources:
+
+Emails
+Meeting transcripts
+Meeting notes
+Project reports
+Planning documents
+
+Each extracted RAIDD item must contain:
+
+description
+source
+impact or context if available

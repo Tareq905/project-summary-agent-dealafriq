@@ -1,13 +1,11 @@
 from apscheduler.schedulers.background import BackgroundScheduler
-from services.session_data_builder import build_session_data
-from services.unified_summary_builder import build_unified_summary
+from services.session_data_builder import build_all_sessions_data
+from services.intelligence_orchestrator import analyze_all_projects
 
 scheduler = BackgroundScheduler()
 
 def run_job():
+    data = build_all_sessions_data()
+    analyze_all_projects(data)
 
-    for s in ["ONGOING","COMPLETED","CANCELLED"]:
-        data = build_session_data(s)
-        build_unified_summary(data)
-
-scheduler.add_job(run_job,'interval',hours=1)
+scheduler.add_job(run_job, 'interval', hours=1)

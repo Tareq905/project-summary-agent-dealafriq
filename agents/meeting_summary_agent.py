@@ -1,17 +1,25 @@
 from utils.llm_client import llm_summary
+from rag.retriever import retrieve_context
 
 def run_meeting_summary(mtg):
-    # Extract data from the arrays in your JSON
-    kps = [kp.get("content") for kp in mtg.get("keyPoints", [])]
-    aps = [ap.get("content") for ap in mtg.get("actionPoints", [])]
+    # 1. Get meeting patterns and RAIDD indicators from RAG
+    context = retrieve_context("meeting patterns RAIDD extraction indicators action points")
     
     prompt = f"""
-    Meeting Title: {mtg.get('title')}
-    Manual Summary: {mtg.get('projectSummary')}
-    Key Points: {kps}
-    Action Points: {aps}
+    Rules: {context}
     
-    Task: Provide a technical AI summary of this meeting. 
-    Focus on progress and blockers.
+    Raw Meeting Data:
+    Title: {mtg.get('title')}
+    Project Summary (Manual): {mtg.get('projectSummary')}
+    Key Points: {mtg.get('keyPoints')}
+    Action Points: {mtg.get('actionPoints')}
+
+    Task: Analyze this specific meeting and return a JSON object.
+    - 'summary': Concise recap of the meeting purpose and outcome.
+    - 'action_points': List tasks assigned during this meeting.
+    - 'discussion_points': List topics debated or reviewed.
+    - 'notes': Observations on meeting engagement or blockers mentioned.
+    - 'raidd_flags': Identify Risks, Assumptions, Issues, Dependencies, Decisions specifically mentioned in this sync.
     """
+    
     return llm_summary(prompt)

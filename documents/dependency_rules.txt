@@ -1,15 +1,21 @@
-[SECTION] DEPENDENCY_TRACKING
-Inbound dependencies must be logged.
-Outbound dependencies must be logged.
-External prerequisite must be validated before milestone start.
+[SECTION] DEPENDENCY_SOURCE_DETECTION
+Dependencies may originate from:
 
-[SECTION] ALIGNMENT_PROCESS
-L3 plans updated weekly by project managers.
-Dependency report shared with PMO.
+Vendor delivery
+External system integration
+Environment access
+Contract approval
+Infrastructure availability
 
-[SECTION] IMPACT_RULE
-Delayed dependency impacts milestone delivery timeline.
+[SECTION] DEPENDENCY_RISK_RELATION
+Unresolved dependencies may create delivery risks.
 
-[SECTION] CONTRACT_DEPENDENCY
-Signed agreement may act as execution prerequisite.
-Cross team dependencies must be validated before execution.
+If dependency delay impacts milestone timeline,
+it must be recorded as Risk in RAIDD register.
+
+[SECTION] DEPENDENCY_SUMMARY_RULE
+Dependencies must appear in project summary reporting when:
+
+milestone impact exists
+external team coordination required
+approval pending

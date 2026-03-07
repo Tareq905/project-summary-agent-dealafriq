@@ -1,18 +1,51 @@
-[SECTION] SPRINT_REVIEW
-Sprint goals reviewed in weekly sync.
+[SECTION] MEETING_RAIDD_EXTRACTION
+Meeting transcripts must be analyzed to extract RAIDD items.
 
-[SECTION] TECHNICAL_DELAY
-API integration delay discussed in meeting.
+Indicators:
 
-[SECTION] TASK_REALLOCATION
-Backend tasks reassigned during execution.
+Risk:
+possible delay
+concern about
+risk of failure
 
-[SECTION] PERFORMANCE_RISK
-UI performance issue flagged as delivery concern.
+Issue:
+system error
+blocking problem
+environment failure
 
-[SECTION] RESOURCE_NEED
-Additional QA support required for integration risk.
+Dependency:
+waiting for access
+dependent on vendor
+requires external approval
 
-[SECTION] ACTION_POINTS
-Documentation update required.
-Login issue resolution required.
+Decision:
+team agreed
+scope approved
+timeline confirmed
+
+Assumption:
+assuming compatibility
+expected availability
+planned resource support
+
+[SECTION] MEETING_SUMMARY_STRUCTURE
+Meeting summaries must contain structured sections:
+
+Meeting Overview
+Key Progress
+Risks Identified
+Issues Identified
+Dependencies Identified
+Decisions Made
+Action Items
+
+[SECTION] ACTION_ITEM_DETECTION
+Statements containing task assignment or follow up responsibility must be classified as Action Items.
+
+Indicators:
+
+will prepare
+assigned to
+responsible for
+to be completed by
+follow up required

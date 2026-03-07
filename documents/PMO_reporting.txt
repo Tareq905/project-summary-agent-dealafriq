@@ -1,21 +1,44 @@
-[SECTION] WEEKLY_REPORTING
-Weekly project status report required.
+[SECTION] RAIDD_REPORTING
+RAIDD register must be included in governance reporting.
 
-[SECTION] REPORT_CONTENT
-Accomplishment tracking mandatory.
-Pending task tracking mandatory.
+Reporting categories include:
 
-[SECTION] ESCALATION_RULE
-Critical issue must be escalated to PMO.
+Open Risks
+Open Issues
+Active Dependencies
+Pending Decisions
+Planning Assumptions
 
-[SECTION] GOVERNANCE_CYCLE
-Weekly governance monitoring required.
-Stakeholder reporting mandatory.
+RAIDD information must be summarized in weekly project reports.
 
-[SECTION] DELIVERY_TRACKING
-Sprint progress monitored.
-Backlog monitored.
-Vendor coordination tracked.
+[SECTION] SUMMARY_REPORT_STRUCTURE
+Project summary reports must include the following sections:
 
-[SECTION] DECISION_LOG
-Decision log maintained for execution reference.
+Project Status
+Key Progress
+Key Risks
+Key Issues
+Key Dependencies
+Key Decisions
+Next Actions
+
+[SECTION] GOVERNANCE_INSIGHT
+Summary reports must highlight delivery impact items.
+
+Priority order:
+
+1. Issues affecting execution
+2. High impact risks
+3. Blocked dependencies
+4. Strategic decisions
+
+[SECTION] EMAIL_UPDATE_FORMAT
+Project email updates must summarize:
+
+Project Status
+Key Progress
+Risks
+Issues
+Dependencies
+Decisions
+Next Steps

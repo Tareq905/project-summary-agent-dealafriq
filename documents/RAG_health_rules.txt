@@ -1,22 +1,26 @@
-[SECTION] SCOPE_HEALTH
-Scope alignment monitored weekly.
+[SECTION] DELIVERY_HEALTH_CALCULATION
+Project delivery health assessment must consider:
 
-[SECTION] BUDGET_HEALTH
-Budget utilization monitored.
+Risk volume
+Issue severity
+Dependency status
+Resource availability
+Vendor performance
 
-[SECTION] RAID_HEALTH
-RAID status affects delivery risk.
+[SECTION] RAID_HEALTH_IMPACT
+High number of unresolved risks or issues may change delivery health status.
 
-[SECTION] RESOURCE_HEALTH
-Team availability affects progress.
+Examples:
 
-[SECTION] VENDOR_HEALTH
-Vendor performance monitored.
+Low risk + resolved issues → Green
+Moderate risk + active issues → Amber
+High risk + blocking issues → Red
 
-[SECTION] STATUS_RULE
-Red indicates delivery risk.
-Amber indicates schedule concern.
-Green indicates aligned execution.
+[SECTION] SUMMARY_HEALTH_ALIGNMENT
+Summary reports must reflect health indicators:
 
-[SECTION] ESCALATION_TRIGGER
-Risk escalation requires governance action.
+Scope alignment
+Budget alignment
+Schedule risk
+Resource availability
+RAIDD status

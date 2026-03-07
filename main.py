@@ -1,36 +1,25 @@
 import os
 import sys
 
-# --- PORTABLE DLL LOADER (No Hardcoding) ---
-def load_dlls():
-    if sys.platform == 'win32':
-        # 1. Get the base path of the virtual environment
-        base_path = sys.prefix
-        
-        # 2. Paths to required DLL folders inside venv
-        dll_folders = [
-            os.path.join(base_path, 'Lib', 'site-packages', 'torch', 'lib'),
-            os.path.join(base_path, 'Lib', 'site-packages', 'msvc_runtime', 'data'),
-        ]
-        
-        for folder in dll_folders:
-            if os.path.exists(folder):
-                os.add_dll_directory(folder)
-
-load_dlls()
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-# -------------------------------------------
-
-from dotenv import load_dotenv
-load_dotenv()
+root = os.path.dirname(os.path.abspath(__file__))
+if root not in sys.path:
+    sys.path.insert(0, root)
 
 from fastapi import FastAPI
+from dotenv import load_dotenv
 from routers.summary_router import router 
 from scheduler.session_scheduler import scheduler 
+
+load_dotenv()
 
 app = FastAPI()
 app.include_router(router)
 
 @app.on_event("startup")
 async def start():
-    scheduler.start()
+    if not scheduler.running:
+        scheduler.start()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

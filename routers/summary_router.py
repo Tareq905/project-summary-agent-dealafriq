@@ -1,12 +1,26 @@
-from fastapi import APIRouter
-from services.session_data_builder import build_session_data
-from services.unified_summary_builder import build_unified_summary
+from fastapi import APIRouter, Depends
+from services.session_data_builder import build_all_sessions_data
+from services.intelligence_orchestrator import (
+    analyze_all_projects,
+    analyze_all_meetings,
+    analyze_all_documents
+)
+# This now works because we created the file in Step 1
+from api_key_auth import verify_backend 
 
 router = APIRouter(prefix="/summary")
 
-@router.post("/session")
-async def session_summary(session: str):
-    session = session.upper()
-    session_data = build_session_data(session)
-    result = build_unified_summary(session_data)
-    return {session: result}
+@router.post("/project")
+async def project_analysis(_ = Depends(verify_backend)):
+    data = build_all_sessions_data()
+    return analyze_all_projects(data)
+
+@router.post("/meeting")
+async def meeting_analysis(_ = Depends(verify_backend)):
+    data = build_all_sessions_data()
+    return analyze_all_meetings(data)
+
+@router.post("/document")
+async def document_analysis(_ = Depends(verify_backend)):
+    data = build_all_sessions_data()
+    return analyze_all_documents(data)

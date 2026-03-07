@@ -1,19 +1,22 @@
-[SECTION] PROJECT_EXECUTION_MODEL
-Milestone driven delivery model is followed.
-Project scope must be finalized before execution begins.
-Client and contractor share delivery responsibility.
+[SECTION] RAIDD_GOVERNANCE_MONITORING
+Project governance requires continuous monitoring of RAIDD elements.
 
-[SECTION] CHANGE_MANAGEMENT
-All scope changes require written approval.
-Execution plan modification must be documented.
+Weekly governance review must include:
 
-[SECTION] ROLE_STRUCTURE
-Project roles include Lead, Assist, Approve.
-Acceptance validation required for all deliverables.
+Risk review
+Issue resolution tracking
+Dependency validation
+Decision log review
+Assumption validation
 
-[SECTION] OWNERSHIP_TRANSFER
-Ownership transfers to client after acceptance.
+[SECTION] DECISION_LOG_STRUCTURE
+Project decisions must be recorded with:
 
-[SECTION] GOVERNANCE_CONTROL
-Weekly dependency alignment review required.
-RAID monitoring mandatory for governance.
+decision description
+decision owner
+decision date
+delivery impact
+
+[SECTION] GOVERNANCE_ALERT
+If risk or issue impacts delivery milestone,
+governance escalation must be triggered.
