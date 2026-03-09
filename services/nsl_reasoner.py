@@ -1,58 +1,44 @@
+from datetime import datetime, timezone
+
 def apply_nsl_logic(project):
-
     logical_facts = []
+    
+    # 1. Timeline Math
+    start_str = project.get("startDate")
+    end_str = project.get("endDate")
+    now = datetime.now(timezone.utc)
 
-    tasks = project.get("tasks", [])
+    if start_str and end_str:
+        s_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+        e_dt = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+        total_days = (e_dt - s_dt).days
+        elapsed = (now - s_dt).days
+        
+        if total_days > 0:
+            time_pct = min(max((elapsed / total_days) * 100, 0), 100)
+            logical_facts.append(f"Timeline: {time_pct:.1f}% of scheduled time has passed.")
+
+    # 2. Work Math
     milestones = project.get("milestones", [])
-    health = project.get("health", [])
+    total_m = len(milestones)
+    done_m = len([m for m in milestones if m.get("status") == "COMPLETED"])
+    
+    work_pct = (done_m / total_m * 100) if total_m > 0 else 0
+    logical_facts.append(f"Completion: {work_pct:.1f}% of milestones are finished.")
 
-    # -----------------------------
-    # Task Delay Risk
-    # -----------------------------
-    for task in tasks:
-        if task.get("status") == "PENDING":
-            logical_facts.append("Pending task may delay delivery.")
+    # 3. Specific Alerts for RAIDD Paragraphs
+    for m in milestones:
+        if m.get("status") != "COMPLETED" and m.get("milestoneDate"):
+            m_dt = datetime.fromisoformat(m.get("milestoneDate").replace("Z", "+00:00"))
+            if m_dt < now:
+                logical_facts.append(f"CRITICAL: Milestone '{m.get('title')}' is overdue. This creates a bottleneck.")
 
-    # -----------------------------
-    # Milestone Risk
-    # -----------------------------
-    for milestone in milestones:
-        if milestone.get("status") == "UPCOMING":
-            logical_facts.append("Upcoming milestone requires readiness.")
+    return {
+        "facts": logical_facts,
+        "progress_str": f"{work_pct:.1f}%"
+    }
 
-    # -----------------------------
-    # Health Risk
-    # -----------------------------
-    for h in health:
-        if h.get("status") == "Healthy":
-            logical_facts.append("Project currently healthy.")
-
-        if h.get("healthStatus") == "ON_TRACK":
-            logical_facts.append("Execution currently on track.")
-
-    return logical_facts
-
-
-# -----------------------------
-# DOCUMENT NSL
-# -----------------------------
-def apply_document_logic(document):
-
-    doc_facts = []
-
-    title = document.get("title", "")
-    key_points = document.get("keyPoints", [])
-    action_points = document.get("actionPoints", [])
-
-    if title and "agreement" in title.lower():
-        doc_facts.append("Execution requires signed agreement.")
-
-    for ap in action_points:
-        if ap.get("status") == "PENDING":
-            doc_facts.append("Pending approval blocks execution.")
-
-    for kp in key_points:
-        if kp.get("status") == "TO_BE_VALIDATED":
-            doc_facts.append("Validation pending for execution artifact.")
-
-    return doc_facts
+def apply_document_logic(doc):
+    facts = []
+    if not doc.get("keyPoints"): facts.append("Document has no extracted key points to validate.")
+    return facts
