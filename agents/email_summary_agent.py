@@ -7,34 +7,33 @@ from rag.retriever import retrieve_context
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def run_email_analysis(email_data, projects_context):
-    # 1. Retrieve the rules we just ingested from email_raidd_rules.txt
     rules_context = retrieve_context("EMAIL_RAIDD_DEFINITIONS EMAIL_FALSE_POSITIVES EMAIL_IMPLICIT_LANGUAGE")
 
-    # 2. Build a lightweight project list for the AI to match against
     available_projects =[
         {"id": p.get("id"), "name": p.get("name"), "description": p.get("description")} 
         for p in projects_context
     ]
 
-    # 3. Define the Prompt
+    # --- UPDATED PROMPT ---
     system_instruction = """
     You are an AI Email Analyzer for a Project Management Office.
     You must output a strictly valid JSON object.
     
     TASK 1: PROJECT MAPPING
-    Determine if the email relates to any of the 'Available Projects'. If it is personal or unrelated, set 'projectId' to null and all other fields to null.
-
-    TASK 2: EXTRACTION
-    If related to a project, extract:
-    - summary: A brief summary of the email.
-    - actionPoints: List of tasks or actions requested.
-    - decisionPoints: List of decisions made.
-    - notes: Any general observations.
-    - tasks: Any formal project tasks mentioned.
-    - sentiment: "positive", "negative", or "neutral".
-    - raiddAnalysis: Object containing descriptive paragraphs for risks, assumptions, issues, dependencies, and decisions.
-
-    Use the RAG rules provided to accurately identify RAIDD elements. If a field is not present in the email, return null.
+    Attempt to match the email to a project in the 'Available Projects' list. 
+    - If you find a match, output the project UUID.
+    - If it discusses a project but you cannot find an exact match in the list, set 'projectId' to null.
+    
+    TASK 2: EXTRACTION LOGIC
+    - If the email is a completely automated system notification (e.g., "Welcome to Outlook", "Security Alert", "Verify your email"), set 'summary' and all RAIDD fields to null.
+    - If the email is a human business/work communication (even if you couldn't match the projectId), YOU MUST EXTRACT THE FOLLOWING:
+        - summary: A brief summary of the email.
+        - actionPoints: List of tasks, actions, or reviews requested.
+        - decisionPoints: List of decisions made or proposed.
+        - notes: Any general observations.
+        - tasks: Any formal project tasks mentioned (e.g., "review the circumstances").
+        - sentiment: "positive", "negative", or "neutral".
+        - raiddAnalysis: Object containing descriptive paragraphs for risks, assumptions, issues, dependencies, and decisions based on the RAG rules. If a specific RAIDD field is not present, set that specific field to null.
     """
 
     user_prompt = f"""

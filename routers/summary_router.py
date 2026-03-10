@@ -30,7 +30,4 @@ async def document_analysis(_ = Depends(verify_backend)):
 
 @router.post("/emails")
 async def email_analysis(_ = Depends(verify_backend)):
-    """
-    Fetches all emails, maps them to projects, and performs RAIDD analysis.
-    """
     return analyze_all_emails()
