@@ -1,12 +1,15 @@
+# routers/summary_router.py
 from fastapi import APIRouter, Depends
 from services.session_data_builder import build_all_sessions_data
 from services.intelligence_orchestrator import (
     analyze_all_projects,
     analyze_all_meetings,
-    analyze_all_documents
+    analyze_all_documents,
 )
-# This now works because we created the file in Step 1
-from api_key_auth import verify_backend 
+# ADD THIS MISSING LINE BELOW:
+from services.email_orchestrator import analyze_all_emails
+
+from api_key_auth import verify_backend
 
 router = APIRouter(prefix="/summary")
 
@@ -24,3 +27,7 @@ async def meeting_analysis(_ = Depends(verify_backend)):
 async def document_analysis(_ = Depends(verify_backend)):
     data = build_all_sessions_data()
     return analyze_all_documents(data)
+
+@router.post("/emails")
+async def email_analysis(_ = Depends(verify_backend)):
+    return analyze_all_emails()

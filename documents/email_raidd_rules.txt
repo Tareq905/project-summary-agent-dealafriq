@@ -1,0 +1,21 @@
+[SECTION] EMAIL_RAIDD_DEFINITIONS
+Emails must be analyzed to extract RAIDD elements based on the following strict definitions:
+- RISK: Potential future negative impact (conditional, probabilistic). E.g., "may delay delivery", "could impact timeline".
+- ISSUE: Current problem already occurring. E.g., "system failure", "test environment is currently unavailable".
+- DEPENDENCY: Reliance on something external or a prerequisite. E.g., "waiting for vendor", "requires approval".
+- DECISION: Explicit or implicit choice/direction agreed upon. E.g., "team agreed", "we will proceed with".
+- ASSUMPTION: Unvalidated expectation. E.g., "assuming compatibility".
+
+[SECTION] EMAIL_FALSE_POSITIVES
+Do NOT flag informational or neutral status updates as Risks or Issues.
+- "Testing activities are progressing as expected." -> NONE
+- "The meeting was held as scheduled." -> NONE
+- "The dashboard has been updated." -> NONE
+
+[SECTION] EMAIL_IMPLICIT_LANGUAGE
+Watch for buried RAIDD items:
+- "Deployment is planned assuming firewall changes are completed" -> DEPENDENCY (Firewall changes).
+- "If data quality trends continue, accuracy could be affected" -> RISK (Accuracy affected).
+
+[SECTION] EMAIL_PROJECT_MAPPING
+Emails often refer to projects informally (e.g., "Hozan's project"). The system must evaluate the email body and map it to the correct project ID based on context. If an email is personal (e.g., "Lunch tomorrow?"), it is not project-related.
