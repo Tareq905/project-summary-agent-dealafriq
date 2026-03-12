@@ -43,7 +43,7 @@ def analyze_all_projects(all_sessions_data):
                     "projectId": project.get("id"),
                     "projectName": project.get("name"),
                     "session": session_name,
-                    "flag": intel.get("flag", "Green"),
+                    "flag": intel.get("flag", "Unknown"), # Updated to use Agent's decided flag
                     "projectScore": float(run_health_score(project)),
                     "summary": intel.get("summary"),
                     "actionPoints": intel.get("action_points", []),
@@ -66,8 +66,11 @@ def analyze_all_meetings(all_sessions_data):
         for project in projects:
             try:
                 mtgs_list = []
+                # Collect transcripts at the project level to pass to the agent
+                project_transcripts = project.get("transcripts", [])
                 for mtg in project.get("meetings", []):
-                    intel = run_meeting_summary(mtg)
+                    # Updated: Passing project_transcripts so the agent can find the discussion
+                    intel = run_meeting_summary(mtg, project_transcripts)
                     mtgs_list.append({
                         "meetingId": mtg.get("id"),
                         "meetingTitle": mtg.get("title"),

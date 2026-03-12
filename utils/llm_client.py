@@ -5,27 +5,40 @@ import json
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def llm_summary(prompt: str):
+    """
+    Standardizes intelligence into a structured JSON object.
+    """
     system_instruction = """
     You are an AI Project Intelligence Agent. You must return a valid JSON object.
     
-    IMPORTANT RULE FOR RAIDD FLAGS:
-    Do not provide short, single-line items. For every Risk, Assumption, Issue, Dependency, or Decision, provide a short paragraph explaining the 'WHY' and the potential impact on the project timeline or health.
+    REQUIRED JSON KEYS (Strictly follow this naming):
+    - summary: A descriptive string (paragraph).
+    - action_points: A LIST of strings.
+    - discussion_points: A LIST of strings.
+    - notes: A string.
+    - flag: "Red", "Amber", or "Green".
+    - raidd_flags: An object containing lists: { "risks": [], "assumptions": [], "issues": [], "dependencies": [], "decisions": [] }
     
-    EXACT KEYS REQUIRED:
-    - summary (string)
-    - action_points (list of strings)
-    - discussion_points (list of strings)
-    - notes (string)
-    - flag (string: "Red", "Amber", or "Green")
-    - raidd_flags (object: lists of descriptive paragraphs)
+    For RAIDD items, write short paragraphs explaining the "WHY".
     """
 
-    res = client.chat.completions.create(
-        model="gpt-4o-mini",
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return json.loads(res.choices[0].message.content)
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return json.loads(res.choices[0].message.content)
+    except Exception as e:
+        print(f"LLM Error: {e}")
+        return {
+            "summary": "Error generating analysis",
+            "action_points": [],
+            "discussion_points": [],
+            "notes": str(e),
+            "flag": "Amber",
+            "raidd_flags": {}
+        }
