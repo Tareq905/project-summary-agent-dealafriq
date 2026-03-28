@@ -7,24 +7,22 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY)
 def llm_summary(prompt: str):
     """
     Standardizes intelligence into a structured JSON object.
+    The AI Agent defines the keys based on the specific analysis type.
     """
     system_instruction = """
     You are an AI Project Intelligence Agent. You must return a valid JSON object.
     
-    REQUIRED JSON KEYS (Strictly follow this naming):
-    - summary: A descriptive string (paragraph).
-    - action_points: A LIST of strings.
-    - discussion_points: A LIST of strings.
-    - notes: A string.
-    - flag: "Red", "Amber", or "Green".
-    - raidd_flags: An object containing lists: { "risks": [], "assumptions": [], "issues": [], "dependencies": [], "decisions": [] }
-    
-    For RAIDD items, write short paragraphs explaining the "WHY".
+    STRICT RULES:
+    1. For 'raidd_flags', each category must be a LIST OF STRINGS.
+    2. Each string in those lists must be a short paragraph explaining 'WHY' and 'IMPACT'.
+    3. NEVER return objects/dictionaries inside RAIDD lists.
+    4. You must decide the 'flag' as "Red", "Amber", or "Green" based on the data.
     """
 
     try:
         res = client.chat.completions.create(
             model="gpt-4o-mini",
+            # Forces the model to output a valid JSON object
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_instruction},
@@ -35,10 +33,7 @@ def llm_summary(prompt: str):
     except Exception as e:
         print(f"LLM Error: {e}")
         return {
-            "summary": "Error generating analysis",
-            "action_points": [],
-            "discussion_points": [],
-            "notes": str(e),
-            "flag": "Amber",
-            "raidd_flags": {}
+            "summary": "Error analyzing data.",
+            "flag": "Unknown",
+            "notes": str(e)
         }

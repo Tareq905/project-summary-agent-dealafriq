@@ -3,35 +3,39 @@ from rag.retriever import retrieve_context
 
 def run_meeting_summary(mtg, transcript_list):
     """
-    Extracts structured intelligence from meeting metadata and transcripts.
+    Extracts structured intelligence, including Agenda, from meeting data and transcripts.
     """
-    # 1. Retrieve RAIDD patterns and extraction rules from RAG
-    context = retrieve_context("meeting patterns RAIDD extraction indicators action points")
+    # Retrieve RAIDD and Agenda extraction patterns from RAG
+    context = retrieve_context("meeting patterns RAIDD extraction action points agenda topics")
     
-    # 2. Compile all speeches from the project transcripts
+    # Compile all speeches from the project transcripts into one block
     transcript_text = ""
     if transcript_list:
         for t in transcript_list:
             speeches = t.get("parsedData", {}).get("speeches", [])
-            transcript_text += " ".join([s.get("message", "") for s in speeches if s.get("message")])
+            transcript_text += " ".join([f"{s.get('speaker')}: {s.get('message')}" for s in speeches if s.get("message")])
 
-    # 3. Build the prompt
     prompt = f"""
-    Governance Rules: {context}
+    Rules & Patterns: {context}
     
-    MEETING CONTEXT:
+    MEETING DATA:
     Title: {mtg.get('title')}
     Manual Summary: {mtg.get('projectSummary')}
     
-    TRANSCRIPT SPEECHES (Actual Conversation):
-    {transcript_text[:6000]} 
+    TRANSCRIPT (Conversation):
+    {transcript_text[:7000]} 
 
     TASK:
-    - Analyze the actual conversation recorded in the transcript.
-    - Extract 'action_points' (Tasks assigned to individuals).
-    - Extract 'discussion_points' (Key topics, debates, or reviews).
-    - Identify any 'raidd_flags' specifically mentioned in the discussion.
-    - You must decide the 'flag' for this meeting based on whether it was productive or revealed blockers.
+    Analyze the meeting and return a JSON object with these EXACT keys:
+    - flag: (Red/Amber/Green)
+    - summary: (A paragraph summarizing the meeting)
+    - agenda: {{ "meetingTopics": ["pointwise list"], "coreDiscussionPoints": ["pointwise list"] }}
+    - action_points: [List of strings]
+    - discussion_points: [List of strings]
+    - notes: (Short metadata or observations)
+    - raidd_flags: {{ "risks": [], "assumptions": [], "issues": [], "dependencies": [], "decisions": [] }}
+
+    Note: RAIDD items MUST be descriptive paragraphs.
     """
     
     return llm_summary(prompt)
