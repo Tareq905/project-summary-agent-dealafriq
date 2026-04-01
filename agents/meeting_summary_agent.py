@@ -27,7 +27,7 @@ def run_meeting_summary(mtg, transcript_list):
 
     TASK:
     Analyze the meeting and return a JSON object with these EXACT keys:
-    - flag: (Red/Amber/Green)
+    - flag: (Red/Yellow/Green)
     - summary: (A paragraph summarizing the meeting)
     - agenda: {{ "meetingTopics": ["pointwise list"], "coreDiscussionPoints": ["pointwise list"] }}
     - action_points: [List of strings]
