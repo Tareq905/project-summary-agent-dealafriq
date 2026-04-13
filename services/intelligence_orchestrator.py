@@ -44,7 +44,7 @@ def analyze_all_projects(all_sessions_data):
     return output
 
 def analyze_all_meetings(all_sessions_data):
-    """Generates granular intelligence for every meeting, including the new Agenda field."""
+    """Generates intelligence while strictly maintaining the original JSON architecture."""
     output = []
     for session_name, data in all_sessions_data.items():
         projects = data.get("projects", [])
@@ -53,30 +53,27 @@ def analyze_all_meetings(all_sessions_data):
         for project in projects:
             p_id = project.get("id")
             
-            # Harvest from both Project Root and Activity Logs
             root_mtgs = project.get("meetings", [])
             project_log = next((item for item in logs if item.get("id") == p_id), {})
-            activities = project_log.get("activities", [])
             transcripts = project_log.get("transcripts", [])
             
-            log_mtgs = [a.get("crudData") for a in activities if a.get("type") == "meeting" and a.get("crudData")]
-            unique_mtgs = {m['id']: m for m in (root_mtgs + log_mtgs) if m and 'id' in m}.values()
-
+            # Map meetings
             mtgs_list = []
-            for mtg in unique_mtgs:
-                # Agent provides the intelligence (including the new agenda keys)
+            for mtg in root_mtgs:
+                if not mtg or 'id' not in mtg: continue
+                
+                # Run Agent
                 intel = run_meeting_summary(mtg, transcripts)
                 
+                # STRICT ARCHITECTURE MAPPING
                 mtgs_list.append({
                     "meetingId": mtg.get("id"),
                     "meetingTitle": mtg.get("title") or "Project Meeting",
-                    "summary": intel.get("summary"),
-                    # --- NEW AGENDA OPTION ADDED HERE ---
+                    "summary": intel.get("summary"), # Contains the 🔹 formatted text
                     "agenda": {
                         "meetingTopics": intel.get("agenda", {}).get("meetingTopics", []),
                         "coreDiscussionPoints": intel.get("agenda", {}).get("coreDiscussionPoints", [])
                     },
-                    # ------------------------------------
                     "actionPoints": intel.get("action_points", []),
                     "discussionPoints": intel.get("discussion_points", []),
                     "notes": intel.get("notes", ""),
