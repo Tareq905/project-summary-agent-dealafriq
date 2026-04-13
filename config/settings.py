@@ -23,9 +23,18 @@ class Settings(BaseSettings):
     COMPLETED_LOG_API: str
     CANCELLED_LOG_API: str
     OPENAI_API_KEY: str
+    PINECONE_API_KEY: str
+    PINECONE_INDEX_NAME: str
+    PINECONE_ENV: str
     
     ALL_EMAILS_API: str
     ALL_PROJECTS_PUBLIC_API: str
+
+    # vendors api
+    VENDOR_MANAGEMENT_API: str
+    PROJECT_MANAGERS_API: str
+
+
 
     # Pydantic will now pick them up from the system environment
     model_config = SettingsConfigDict(extra="ignore")

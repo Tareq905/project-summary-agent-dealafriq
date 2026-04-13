@@ -8,6 +8,9 @@ from services.intelligence_orchestrator import (
 )
 # ADD THIS MISSING LINE BELOW:
 from services.email_orchestrator import analyze_all_emails
+# Vendor analysis endpoint
+from services.vendor_orchestrator import analyze_all_vendors
+
 
 from api_key_auth import verify_backend
 
@@ -31,3 +34,7 @@ async def document_analysis(_ = Depends(verify_backend)):
 @router.post("/emails")
 async def email_analysis(_ = Depends(verify_backend)):
     return analyze_all_emails()
+
+@router.post("/vendor")
+async def vendor_analysis(_ = Depends(verify_backend)):
+    return analyze_all_vendors()
