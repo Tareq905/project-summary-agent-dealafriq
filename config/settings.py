@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     VENDOR_MANAGEMENT_API: str
     PROJECT_MANAGERS_API: str
 
+    BACKEND_SERVICE_SECRET: str
+
 
 
     # Pydantic will now pick them up from the system environment
