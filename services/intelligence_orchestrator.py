@@ -5,9 +5,42 @@ from agents.health_score_agent import run_health_score
 from services.nsl_reasoner import apply_nsl_logic
 
 def analyze_all_projects(all_sessions_data):
+    """
+    Analyzes project status. 
+    Maintains a FLAT structure and ENSURES Completed/Cancelled appear 
+    even when the backend returns 0 projects.
+    """
     output = []
+    
+    # This loops through ONGOING, COMPLETED, CANCELLED
     for session_name, data in all_sessions_data.items():
         projects = data.get("projects", [])
+
+        # --- THE FIX: Add this block to handle empty sessions ---
+        if not projects:
+            output.append({
+                "projectId": None,
+                "projectName": "No projects in this session",
+                "session": session_name,
+                "flag": "Green",
+                "projectScore": 0.0,
+                "summary": "No data available.",
+                "actionPoints": [],
+                "discussionPoints": [],
+                "notes": "No projects found for this status.",
+                "raiddFlags": {
+                    "risks": [],
+                    "assumptions": [],
+                    "issues": [],
+                    "dependencies": [],
+                    "decisions": []
+                },
+                "milestones": []
+            })
+            continue # Move to the next session
+        # -------------------------------------------------------
+
+        # If projects EXIST, run the normal AI analysis
         for project in projects:
             try:
                 # 1. Run Mathematical NSL
@@ -24,7 +57,7 @@ def analyze_all_projects(all_sessions_data):
                     "projectName": project.get("name"),
                     "session": session_name,
                     "flag": intel.get("flag", "Unknown"),
-                    "projectScore": float(calculated_score), # NOW FIXED
+                    "projectScore": float(calculated_score),
                     "summary": intel.get("summary"),
                     "actionPoints": intel.get("action_points", []),
                     "discussionPoints": intel.get("discussion_points", []),
@@ -41,35 +74,47 @@ def analyze_all_projects(all_sessions_data):
             except Exception as e:
                 print(f"ERROR project {project.get('id')}: {e}")
                 continue
+                
     return output
 
 def analyze_all_meetings(all_sessions_data):
-    """Generates intelligence while strictly maintaining the original JSON architecture."""
+    """
+    Generates meeting intelligence.
+    Maintains the FLAT structure but forces empty sessions to appear.
+    """
     output = []
+    
     for session_name, data in all_sessions_data.items():
         projects = data.get("projects", [])
         logs = data.get("logs", [])
 
+        # --- NEW LOGIC: If a session is empty, add a placeholder ---
+        if not projects:
+            output.append({
+                "projectId": None,
+                "projectName": "No projects in this session",
+                "session": session_name,
+                "meetings": []
+            })
+            continue 
+        # -----------------------------------------------------------
+
         for project in projects:
             p_id = project.get("id")
-            
             root_mtgs = project.get("meetings", [])
             project_log = next((item for item in logs if item.get("id") == p_id), {})
             transcripts = project_log.get("transcripts", [])
             
-            # Map meetings
             mtgs_list = []
             for mtg in root_mtgs:
                 if not mtg or 'id' not in mtg: continue
                 
-                # Run Agent
                 intel = run_meeting_summary(mtg, transcripts)
                 
-                # STRICT ARCHITECTURE MAPPING
                 mtgs_list.append({
                     "meetingId": mtg.get("id"),
                     "meetingTitle": mtg.get("title") or "Project Meeting",
-                    "summary": intel.get("summary"), # Contains the 🔹 formatted text
+                    "summary": intel.get("summary"),
                     "agenda": {
                         "meetingTopics": intel.get("agenda", {}).get("meetingTopics", []),
                         "coreDiscussionPoints": intel.get("agenda", {}).get("coreDiscussionPoints", [])
@@ -82,28 +127,45 @@ def analyze_all_meetings(all_sessions_data):
             
             output.append({
                 "projectId": p_id,
+                "projectName": project.get("name"),
                 "session": session_name,
                 "meetings": mtgs_list
             })
+            
     return output
 
 def analyze_all_documents(all_sessions_data):
-    """Generates detailed analysis for every uploaded document.
-    Structure remains constant as requested.
+    """
+    Generates detailed analysis for every uploaded document.
+    Maintains a FLAT structure and forces placeholders for empty sessions.
     """
     output = []
     for session_name, data in all_sessions_data.items():
         projects = data.get("projects", [])
         logs = data.get("logs", [])
 
+        # --- THE FIX: If no projects exist, add a placeholder for the session ---
+        if not projects:
+            output.append({
+                "projectId": None,
+                "session": session_name,
+                "documents": []
+            })
+            continue 
+        # -----------------------------------------------------------------------
+
         for project in projects:
             p_id = project.get("id")
             
+            # 1. Gather documents from project root
             root_docs = project.get("documents", [])
+            
+            # 2. Gather documents from activity logs
             project_log = next((item for item in logs if item.get("id") == p_id), {})
             activities = project_log.get("activities", [])
-            
             log_docs = [a.get("crudData") for a in activities if a.get("type") == "document" and a.get("crudData")]
+            
+            # 3. Merge and deduplicate documents
             unique_docs = {d['id']: d for d in (root_docs + log_docs) if d and 'id' in d}.values()
 
             docs_list = []
@@ -119,9 +181,11 @@ def analyze_all_documents(all_sessions_data):
                     "raiddFlags": intel.get("raidd_flags", {})
                 })
             
+            # 4. Add the project documents to the flat output list
             output.append({
                 "projectId": p_id,
                 "session": session_name,
                 "documents": docs_list
             })
+            
     return output
