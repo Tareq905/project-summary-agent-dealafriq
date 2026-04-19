@@ -12,38 +12,34 @@ def run_email_analysis(email_data, projects_context):
     You are an AI Email Analyzer for a Project Management Office.
     You must output a strictly valid JSON object.
     
-    TASK: Extract RAIDD items. If the email contains a Risk, Issue, Dependency, Decision, or Assumption, you MUST use the following modular structure:
-    {
-      "category": "String",
-      "status": "High | Medium | Low",
-      "ai_summary": "One paragraph explaining the impact",
-      "details": ["Bullet point 1", "Bullet point 2"]
-    }
+    1. CATEGORY:
+    Analyze the email and select ALL applicable labels from this list ONLY: 
+    "Issue", "Risk", "Dependency", "Decision", "Assumption", "Informational".
 
-    RULE: If a category (e.g., risks) has no items, return null. Do not return [].
+    2. RAIDD ANALYSIS:
+    - Each field (risks, issues, decisions, assumptions, dependencies) must be a LIST OF STRINGS.
+    - Each string must be a descriptive paragraph explaining the impact.
+    - If a category has no items, return null.
     """
 
     user_prompt = f"""
     RAG RULES: {rules_context}
+    EMAIL: Subject: {email_data.get('subject')} | Body: {email_data.get('body')}
 
-    EMAIL TO ANALYZE:
-    Subject: {email_data.get('subject')}
-    Body: {email_data.get('body')}
-
-    RETURN EXPECTED JSON FORMAT:
+    RETURN THIS EXACT JSON STRUCTURE:
     {{
+        "flag": "Red | Amber | Green",
         "emailId": "{email_data.get('id')}",
         "summary": "string",
-        "category": ["Issue", "Risk", "..."],
-        "flag": "Red | Amber | Green",
+        "category": ["Issue", "Risk", "Dependency", "Decision", "Assumption"],
+        "sentiment": "positive | negative | neutral",
         "raiddAnalysis": {{
-            "risks": [object] or null,
-            "assumptions": [object] or null,
-            "issues": [object] or null,
-            "dependencies": [object] or null,
-            "decisions": [object] or null
-        }},
-        "sentiment": "string"
+            "risks": ["paragraph string"] or null,
+            "issues": ["paragraph string"] or null,
+            "decisions": ["paragraph string"] or null,
+            "assumptions": ["paragraph string"] or null,
+            "dependencies": ["paragraph string"] or null
+        }}
     }}
     """
 
