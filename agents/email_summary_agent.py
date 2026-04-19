@@ -1,4 +1,3 @@
-# agents/email_summary_agent.py
 import json
 from openai import OpenAI
 from config.settings import settings
@@ -13,22 +12,15 @@ def run_email_analysis(email_data, projects_context):
     You are an AI Email Analyzer for a Project Management Office.
     You must output a strictly valid JSON object.
     
-    TASK 1: CLASSIFICATION (ARRAY)
-    Identify ALL applicable categories that describe the email content and return them in the 'category' array:
-    - 'Issue': Current problems, errors, or blockers happening NOW.
-    - 'Risk': Potential future problems or uncertainties.
-    - 'Dependency': Waiting for external input, approvals, or prerequisites.
-    - 'Decision': Confirmed choices, approvals, or directions.
-    - 'Assumption': Unvalidated expectations.
-    - 'Informational': General updates with no specific RAIDD elements.
+    TASK: Extract RAIDD items. If the email contains a Risk, Issue, Dependency, Decision, or Assumption, you MUST use the following modular structure:
+    {
+      "category": "String",
+      "status": "High | Medium | Low",
+      "ai_summary": "One paragraph explaining the impact",
+      "details": ["Bullet point 1", "Bullet point 2"]
+    }
 
-    TASK 2: EXTRACTION LOGIC
-    - flag: "Red" if 'Issue' is in the category array. "Amber" if 'Risk' or 'Dependency' is present (and no Issues). "Green" otherwise.
-    - summary: A brief summary of the email.
-    - raiddAnalysis: Descriptive paragraphs for each RAIDD type.
-    - sentiment: "positive", "negative", or "neutral".
-    
-    STRICT RULE: Every RAIDD entry MUST be a short paragraph explaining the 'WHY' and the 'IMPACT'.
+    RULE: If a category (e.g., risks) has no items, return null. Do not return [].
     """
 
     user_prompt = f"""
@@ -42,14 +34,14 @@ def run_email_analysis(email_data, projects_context):
     {{
         "emailId": "{email_data.get('id')}",
         "summary": "string",
-        "category": ["string"],
+        "category": ["Issue", "Risk", "..."],
         "flag": "Red | Amber | Green",
         "raiddAnalysis": {{
-            "risks": ["paragraph"] or null,
-            "assumptions": ["paragraph"] or null,
-            "issues": ["paragraph"] or null,
-            "dependencies": ["paragraph"] or null,
-            "decisions": ["paragraph"] or null
+            "risks": [object] or null,
+            "assumptions": [object] or null,
+            "issues": [object] or null,
+            "dependencies": [object] or null,
+            "decisions": [object] or null
         }},
         "sentiment": "string"
     }}
