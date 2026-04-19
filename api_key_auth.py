@@ -1,25 +1,24 @@
 from fastapi import Header, HTTPException
 from config.settings import settings
 
+# This list allows your AI to accept BOTH the new secret and the old one
+ALLOWED_KEYS = [
+    getattr(settings, "BACKEND_SERVICE_SECRET", ""),
+    "PROJECT_AI_BACKEND" # The legacy key other developers are likely using
+]
+
 async def verify_backend(x_backend_service: str = Header(None)):
     """
-    Dependency to verify that the incoming request is from 
-    the authorized backend service.
+    This is what protects your AI API. 
+    It will now accept the new secret OR the old legacy key.
     """
-    # 1. Check if the header exists
     if not x_backend_service:
-        raise HTTPException(
-            status_code=401, 
-            detail="Missing security header: x-backend-service"
-        )
+        raise HTTPException(status_code=401, detail="Missing x-backend-service header")
 
-    # 2. Compare the incoming header with the secret stored in .env
-    if x_backend_service != settings.BACKEND_SERVICE_SECRET:
-        print(f"SECURITY ALERT: Unauthorized access attempt with key: {x_backend_service}")
-        raise HTTPException(
-            status_code=401, 
-            detail="Unauthorized Backend: Invalid Security Key"
-        )
+    # Check if the key provided by the developer is in our allowed list
+    if x_backend_service not in ALLOWED_KEYS:
+        # This log will help you see EXACTLY what the other developer is sending
+        print(f"DEBUG: Blocked unauthorized key: {x_backend_service}")
+        raise HTTPException(status_code=401, detail="Invalid security token")
 
-    # 3. If everything is correct, return True to allow the request to proceed
     return True

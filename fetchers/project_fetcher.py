@@ -3,8 +3,8 @@ from config.settings import settings
 
 def fetch_session_projects(session: str):
     """
-    Fetches projects from the backend using the x-backend-service 
-    header for authentication.
+    Fetches projects from the backend. 
+    Uses BACKEND_SERVICE_SECRET for the security handshake.
     """
     # 1. Determine the URL based on the session type
     if session == "ONGOING": 
@@ -14,32 +14,43 @@ def fetch_session_projects(session: str):
     elif session == "CANCELLED": 
         url = settings.CANCELLED_PROJECT_API
     else: 
-        print(f"DEBUG: Invalid session type: {session}")
+        print(f"DEBUG: Invalid session type requested: {session}")
         return []
 
-    # 2. Define the headers required by your backend developer
+    # 2. Identify the Security Token
+    # We use the new Secret, but provide a hardcoded fallback 
+    # just in case the .env is not yet updated on the server.
+    auth_token = getattr(settings, "BACKEND_SERVICE_SECRET", "PROJECT_AI_BACKEND")
+
+    # 3. Define the headers for the Outgoing Request (AI -> Backend)
     headers = {
-        "x-backend-service": settings.BACKEND_SERVICE_SECRET,
+        "x-backend-service": auth_token,
         "Content-Type": "application/json"
     }
 
     try:
-        print(f"DEBUG: Fetching {session} projects from {url}")
+        print(f"DEBUG: AI Service calling Backend API: {url}")
         
-        # 3. Perform the GET request with the headers
+        # 4. Perform the GET request
         response = requests.get(url, headers=headers, timeout=30)
         
         if response.status_code == 200:
             json_res = response.json()
             
-            # Support both raw list response and {data: []} wrapper
+            # Handle list-style or object-style responses
             if isinstance(json_res, list):
                 return json_res
-            return json_res.get("data", []) or json_res.get("projects", [])
+            
+            # Extract data from nested keys used by common backend frameworks
+            return (json_res.get("data", []) or 
+                    json_res.get("projects", []) or 
+                    json_res.get("payload", []))
         
-        print(f"DEBUG: Project API Error {response.status_code}: {response.text}")
+        # If the backend returns an error (like 401), we log it here
+        print(f"CRITICAL: Backend rejected AI Request. Status: {response.status_code}")
+        print(f"Response Body: {response.text}")
         return []
 
     except Exception as e:
-        print(f"DEBUG: Project Fetch Exception: {e}")
+        print(f"EXCEPTION during project fetch: {str(e)}")
         return []
