@@ -11,6 +11,9 @@ from services.email_orchestrator import analyze_all_emails
 # Vendor analysis endpoint
 from services.vendor_orchestrator import analyze_all_vendors
 
+# transcript analysis endpoint
+from services.transcript_orchestrator import analyze_all_meeting_transcripts
+
 
 from api_key_auth import verify_backend
 
@@ -38,3 +41,7 @@ async def email_analysis(_ = Depends(verify_backend)):
 @router.post("/vendor")
 async def vendor_analysis(_ = Depends(verify_backend)):
     return analyze_all_vendors()
+
+@router.post("/transcripts")
+async def transcript_analysis(_ = Depends(verify_backend)):
+    return analyze_all_meeting_transcripts()

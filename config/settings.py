@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     VENDOR_MANAGEMENT_API: str
     PROJECT_MANAGERS_API: str
 
+    # meeting transcript api
+    MEETING_TRANSCRIPT_API: str
+
     BACKEND_SERVICE_SECRET: str
 
 
