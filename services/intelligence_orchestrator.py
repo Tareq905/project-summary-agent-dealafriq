@@ -108,8 +108,8 @@ def analyze_all_projects(all_sessions_data):
 
 def analyze_all_meetings(all_sessions_data):
     """
-    Generates meeting intelligence.
-    Maintains the FLAT structure but forces empty sessions to appear.
+    Analyzes only the latest meeting for each project to optimize performance.
+    Architecture remains identical to the provided JSON example.
     """
     output = []
     
@@ -117,7 +117,6 @@ def analyze_all_meetings(all_sessions_data):
         projects = data.get("projects", [])
         logs = data.get("logs", [])
 
-        # --- NEW LOGIC: If a session is empty, add a placeholder ---
         if not projects:
             output.append({
                 "projectId": None,
@@ -126,34 +125,55 @@ def analyze_all_meetings(all_sessions_data):
                 "meetings": []
             })
             continue 
-        # -----------------------------------------------------------
 
         for project in projects:
             p_id = project.get("id")
             root_mtgs = project.get("meetings", [])
+            
+            # Identify the project log context
             project_log = next((item for item in logs if item.get("id") == p_id), {})
             transcripts = project_log.get("transcripts", [])
             
             mtgs_list = []
-            for mtg in root_mtgs:
-                if not mtg or 'id' not in mtg: continue
-                
-                intel = run_meeting_summary(mtg, transcripts)
-                
-                mtgs_list.append({
-                    "meetingId": mtg.get("id"),
-                    "meetingTitle": mtg.get("title") or "Project Meeting",
-                    "summary": intel.get("summary"),
-                    "agenda": {
-                        "meetingTopics": intel.get("agenda", {}).get("meetingTopics", []),
-                        "coreDiscussionPoints": intel.get("agenda", {}).get("coreDiscussionPoints", [])
-                    },
-                    "actionPoints": intel.get("action_points", []),
-                    "discussionPoints": intel.get("discussion_points", []),
-                    "notes": intel.get("notes", ""),
-                    "raiddFlags": intel.get("raidd_flags", {})
-                })
             
+            if root_mtgs:
+                # 1. Sort meetings by meetingDate or createdAt to find the latest
+                # Sorting in ascending order so the last one [-1] is the latest
+                sorted_mtgs = sorted(
+                    root_mtgs, 
+                    key=lambda x: x.get('meetingDate') or x.get('createdAt') or ''
+                )
+
+                # 2. Pick only the latest meeting
+                latest_mtg = sorted_mtgs[-1]
+                
+                try:
+                    # 3. Process only the latest meeting through the AI Agent
+                    intel = run_meeting_summary(latest_mtg, transcripts)
+                    
+                    mtgs_list.append({
+                        "meetingId": latest_mtg.get("id"),
+                        "meetingTitle": latest_mtg.get("title") or "Project Meeting",
+                        "summary": intel.get("summary"),
+                        "agenda": {
+                            "meetingTopics": intel.get("agenda", {}).get("meetingTopics", []),
+                            "coreDiscussionPoints": intel.get("agenda", {}).get("coreDiscussionPoints", [])
+                        },
+                        "actionPoints": intel.get("action_points", []),
+                        "discussionPoints": intel.get("discussion_points", []),
+                        "notes": intel.get("notes", ""),
+                        "raiddFlags": {
+                            "risks": intel.get("raidd_flags", {}).get("risks", []),
+                            "assumptions": intel.get("raidd_flags", {}).get("assumptions", []),
+                            "issues": intel.get("raidd_flags", {}).get("issues", []),
+                            "dependencies": intel.get("raidd_flags", {}).get("dependencies", []),
+                            "decisions": intel.get("raidd_flags", {}).get("decisions", [])
+                        }
+                    })
+                except Exception as e:
+                    print(f"Error analyzing latest meeting for project {p_id}: {e}")
+
+            # 4. Append project object to output list
             output.append({
                 "projectId": p_id,
                 "projectName": project.get("name"),
