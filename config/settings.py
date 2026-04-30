@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # 1. Manually find the .env file path
 env_path = Path(__file__).resolve().parent.parent / ".env"
 
-# 2. Debugging: This will print in your terminal when you start
+# 2. Debugging
 print(f"--- DEBUG INFO ---")
 print(f"Looking for .env at: {env_path}")
 print(f"File exists? {env_path.exists()}")
@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     PINECONE_INDEX_NAME: str
     PINECONE_ENV: str
     
+    # --- UPDATED TO MATCH YOUR .env FILE NAME ---
+    PINECONE_EMAIL_INDEX_NAME: str 
+    # --------------------------------------------
+
     ALL_EMAILS_API: str
     ALL_PROJECTS_PUBLIC_API: str
 
@@ -39,13 +43,11 @@ class Settings(BaseSettings):
 
     BACKEND_SERVICE_SECRET: str
 
-
-
-    # Pydantic will now pick them up from the system environment
     model_config = SettingsConfigDict(extra="ignore")
 
 try:
     settings = Settings()
 except Exception as e:
     print(f"ERROR: Settings validation failed.")
+    print(f"Reason: {e}")
     raise e
