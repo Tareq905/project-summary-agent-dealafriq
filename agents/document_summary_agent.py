@@ -32,6 +32,13 @@ def run_document_summary(doc):
     - raidd_flags: MUST contain lists of string paragraphs. 
     - DO NOT return empty categories if you can infer a logical flag from the FileName and Facts.
 
+    CRITICAL RULES FOR KEY POINTS AND ACTION POINTS:
+    - action_points: Extract at least 3-5 specific actionable items from the document.
+      If none are explicit, INFER them from the document title and summary.
+    - discussion_points: Extract at least 3-5 key discussion topics from the document content.
+      If no key points are extracted yet, generate them based on the document fileName and context.
+    - NEVER return empty lists for action_points or discussion_points.
+
     STRICT RULE: Every RAIDD list item must be a 2-3 sentence string. No objects.
     """
     

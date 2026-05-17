@@ -1,247 +1,340 @@
+import logging
+import queue
+import threading
 from agents.project_summary_agent import run_project_summary
 from agents.meeting_summary_agent import run_meeting_summary
 from agents.document_summary_agent import run_document_summary
 from agents.health_score_agent import run_health_score
+from agents.weekly_summary_agent import run_weekly_summary
 from services.nsl_reasoner import apply_nsl_logic
+from services.pusher import (
+    push_project_summary,
+    push_weekly_summary,
+    push_meeting_result,
+    push_document_result,
+    push_ai_detection,
+)
 
-from agents.project_summary_agent import run_project_summary
-from agents.meeting_summary_agent import run_meeting_summary
-from agents.document_summary_agent import run_document_summary
-from agents.health_score_agent import run_health_score
-from services.nsl_reasoner import apply_nsl_logic
+logger = logging.getLogger(__name__)
 
-def analyze_all_projects(all_sessions_data):
-    """
-    Analyzes project status using a multi-agent approach.
-    Upgraded to strictly enforce STRING types for projectHealth based on Task/RAIDD logic.
-    """
-    output = []
-    for session_name, data in all_sessions_data.items():
-        projects = data.get("projects", [])
-        logs = data.get("logs", [])
+HEALTH_COLOR_MAP = {
+    "excellent": "green",
+    "good":      "amber",
+    "bad":       "red",
+}
 
-        # 1. Standard Placeholder for empty sessions
+
+def _process_single_project(project: dict, index: int, total: int) -> dict | None:
+    p_id   = project.get("id")
+    p_name = project.get("name", "Unknown")
+    logger.info(f"[{index}/{total}] Processing: '{p_name}'")
+
+    try:
+        nsl_res = apply_nsl_logic(project)
+        intel   = run_project_summary(project, nsl_res["facts"], project.get("meetings", []))
+        score   = run_health_score(project, nsl_res)
+
+        raw_health = intel.get("health_label")
+        if isinstance(raw_health, list):
+            health_label = raw_health[0] if raw_health else "Bad"
+        elif isinstance(raw_health, str) and raw_health.strip():
+            health_label = raw_health
+        else:
+            health_label = "Bad" if (nsl_res.get("overdue_count", 0) > 0 or nsl_res.get("overdue_tasks", 0) > 0) else "Good"
+
+        health_color = HEALTH_COLOR_MAP.get(health_label.lower(), "red")
+
+        ai_summary        = intel.get("summary", "")
+        project_progress  = nsl_res.get("progress_str", "0%")
+        flag              = intel.get("flag", "Green")
+        action_points     = intel.get("action_points", [])
+        discussion_points = intel.get("discussion_points", [])
+        notes             = intel.get("notes", "")
+        raidd_flags       = intel.get("raidd_flags", {
+            "risks": [], "issues": [], "assumptions": [], "dependencies": [], "decisions": []
+        })
+
+        weekly_raw  = run_weekly_summary(project, [])
+        weekly_text = weekly_raw.get("weekly_summary") or weekly_raw.get("summary", "") if isinstance(weekly_raw, dict) else str(weekly_raw)
+
+        raidd_data = {
+            "risks":        raidd_flags.get("risks", []),
+            "issues":       raidd_flags.get("issues", []),
+            "assumptions":  raidd_flags.get("assumptions", []),
+            "dependencies": raidd_flags.get("dependencies", []),
+            "decisions":    raidd_flags.get("decisions", []),
+        }
+
+        push_project_summary(
+            project_id        = p_id,
+            ai_summary        = ai_summary,
+            project_progress  = project_progress,
+            project_health    = health_label,
+            notes             = notes,
+            discussion_points = discussion_points,
+            action_points     = action_points,
+            raidd_data        = raidd_data
+        )
+        push_weekly_summary(p_id, weekly_text)
+        push_ai_detection(
+            project_id=p_id, project_name=p_name, flag=flag,
+            health_label=health_color, project_progress=project_progress,
+            ai_summary=ai_summary, action_points=action_points,
+            discussion_points=discussion_points, notes=notes, raidd_flags=raidd_flags
+        )
+
+        logger.info(f"[{index}/{total}] '{p_name}' — pushed successfully.")
+        return {
+            "summary":          ai_summary,
+            "projectProgress":  project_progress,
+            "projectHealth":    health_color,
+            "notes":            notes,
+            "discussionPoints": discussion_points,
+            "actionPoints":     action_points,
+            "raiddData":        raidd_data,
+        }
+
+    except Exception as e:
+        logger.error(f"[{index}/{total}] Error '{p_name}': {e}")
+        return None
+
+
+# ── Project Analysis — Queue-based serial ─────────────────
+def analyze_all_projects(session_data: dict, project_id: str = None):
+    projects = session_data.get("projects", [])
+
+    # Filter to single project if id is provided
+    if project_id:
+        projects = [p for p in projects if p.get("id") == project_id]
         if not projects:
-            output.append({
-                "projectId": None,
-                "projectName": "No projects found",
-                "session": session_name,
-                "flag": "Green",
-                "projectScore": 0.0,
-                "weeklySummary": "",
-                "projectHealth": "No Data", 
-                "summary": "No data available.",
-                "actionPoints": [],
-                "discussionPoints": [],
-                "notes": "No active projects in this session.",
-                "raiddFlags": {
-                    "risks": [], "assumptions": [], "issues": [], "dependencies": [], "decisions": []
-                },
-                "milestones": []
-            })
+            logger.warning(f"⚠️ No project found with id: {project_id}")
+            return []
+
+    total = len(projects)
+    logger.info(f"Queue-based project analysis. Total: {total}")
+
+    if not projects:
+        return []
+
+    project_queue = queue.Queue()
+    for p in projects:
+        project_queue.put(p)
+
+    results      = []
+    processed    = 0
+    results_lock = threading.Lock()
+
+    def worker():
+        nonlocal processed
+        while not project_queue.empty():
+            try:
+                project = project_queue.get(block=False)
+            except queue.Empty:
+                break
+            processed += 1
+            result = _process_single_project(project, processed, total)
+            if result:
+                with results_lock:
+                    results.append(result)
+            project_queue.task_done()
+            logger.info(f"Queue remaining: {project_queue.qsize()}")
+
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join()
+
+    logger.info(f"Done. {len(results)}/{total} succeeded.")
+    return results
+
+
+# ── Weekly Summary Only ───────────────────────────────────
+def analyze_weekly_summaries_only(session_data: dict, project_id: str = None):
+    projects = session_data.get("projects", [])
+
+    # Filter to single project if id is provided
+    if project_id:
+        projects = [p for p in projects if p.get("id") == project_id]
+        if not projects:
+            logger.warning(f"⚠️ No project found with id: {project_id}")
+            return []
+
+    logger.info(f"Weekly summary job. Total: {len(projects)} projects.")
+    results = []
+
+    for project in projects:
+        p_id   = project.get("id")
+        p_name = project.get("name", "Unknown")
+        try:
+            weekly_raw  = run_weekly_summary(project, [])
+            weekly_text = weekly_raw.get("weekly_summary") or weekly_raw.get("summary", "") if isinstance(weekly_raw, dict) else str(weekly_raw)
+            push_weekly_summary(p_id, weekly_text)
+            results.append({"projectId": p_id, "weeklySummary": weekly_text})
+            logger.info(f"Weekly summary pushed for '{p_name}'.")
+        except Exception as e:
+            logger.error(f"Weekly summary error '{p_name}': {e}")
+
+    logger.info(f"Weekly summary done. {len(results)}/{len(projects)} succeeded.")
+    return results
+
+
+# ── Meeting Analysis ──────────────────────────────────────
+def analyze_all_meetings(session_data: dict, meeting_id: str = None):
+    projects = session_data.get("projects", [])
+    logger.info(f"Meeting analysis...")
+    results = []
+
+    for project in projects:
+        p_id     = project.get("id")
+        p_name   = project.get("name", "Unknown")
+        meetings = project.get("meetings", [])
+
+        if not meetings:
+            logger.info(f"No meetings for '{p_name}'. Skipping.")
             continue
 
-        for project in projects:
-            try:
-                p_id = project.get("id")
-                
-                # 2. Harvest Context
-                project_log = next((item for item in logs if item.get("id") == p_id), {})
-                activities = project_log.get("activities", [])
-                recent_meetings = [a.get("crudData") for a in activities if a.get("type") == "meeting"]
+        # Filter to single meeting if id is provided, otherwise take latest
+        if meeting_id:
+            target_meetings = [m for m in meetings if m.get("id") == meeting_id]
+            if not target_meetings:
+                logger.info(f"No meeting with id [{meeting_id}] in project '{p_name}'. Skipping.")
+                continue
+            latest_meeting = target_meetings[0]
+        else:
+            latest_meeting = sorted(
+                meetings,
+                key=lambda x: x.get("meetingDate") or x.get("createdAt") or ""
+            )[-1]
 
-                # 3. Execute NSL Logic (Math/Facts)
-                nsl_res = apply_nsl_logic(project)
-                
-                # 4. Execute AI Agent
-                intel = run_project_summary(project, nsl_res["facts"], recent_meetings)
-                score = run_health_score(project, nsl_res)
+        m_id = latest_meeting.get("id")
 
-                # 5. --- UPGRADED HEALTH MAPPING LOGIC ---
-                # Ensure descriptive_health is NEVER a list []
-                raw_health = intel.get("health_label")
-                
-                if isinstance(raw_health, list):
-                    # If AI returned a list, pick the first word or default
-                    descriptive_health = raw_health[0] if len(raw_health) > 0 else "Bad"
-                elif isinstance(raw_health, str) and raw_health.strip():
-                    descriptive_health = raw_health
-                else:
-                    # Deterministic Fallback Logic if AI fails
-                    if nsl_res.get("overdue_count", 0) > 0 or nsl_res.get("overdue_tasks", 0) > 0:
-                        descriptive_health = "Bad"
-                    else:
-                        descriptive_health = "Good"
+        try:
+            transcripts = latest_meeting.get("transcripts", [])
+            intel = run_meeting_summary(latest_meeting, transcripts)
 
-                # 6. Construct Final Architecture
-                ai_raidd = intel.get("raidd_flags", {})
-                output.append({
-                    "projectId": p_id,
-                    "projectName": project.get("name"),
-                    "session": session_name,
-                    "flag": intel.get("flag", "Green"),
-                    "projectScore": float(score),
-                    "weeklySummary": intel.get("weekly_summary", ""),
-                    "projectHealth": descriptive_health, # Guaranteed to be a String
-                    "summary": intel.get("summary"),
-                    "actionPoints": intel.get("action_points", []),
-                    "discussionPoints": intel.get("discussion_points", []),
-                    "notes": intel.get("notes", ""),
-                    "raiddFlags": {
-                        "risks": ai_raidd.get("risks", []),
-                        "assumptions": ai_raidd.get("assumptions", []),
-                        "issues": ai_raidd.get("issues", []),
-                        "dependencies": ai_raidd.get("dependencies", []),
-                        "decisions": ai_raidd.get("decisions", [])
-                    },
-                    "milestones": [{
-                        "id": m.get("id"),
-                        "title": m.get("title"),
-                        "project progress": nsl_res["progress_str"],
-                        "status": m.get("status")
-                    } for m in project.get("milestones", [])]
-                })
-            except Exception as e:
-                print(f"Error processing {project.get('id', 'Unknown')}: {e}")
+            logger.info(f"DEBUG Meeting AI Response for [{m_id}]: {intel}")
 
-    return output
+            if intel is None:
+                logger.warning(f"Meeting [{m_id}] for '{p_name}' — AI returned None.")
+                continue
 
-def analyze_all_meetings(all_sessions_data):
-    """
-    Analyzes only the latest meeting for each project to optimize performance.
-    Architecture remains identical to the provided JSON example.
-    """
-    output = []
-    
-    for session_name, data in all_sessions_data.items():
-        projects = data.get("projects", [])
-        logs = data.get("logs", [])
-
-        if not projects:
-            output.append({
-                "projectId": None,
-                "projectName": "No projects in this session",
-                "session": session_name,
-                "meetings": []
+            # ── Extract fields from agent response ────────
+            ai_meeting_summary = intel.get("aiMeetingSummary") or None
+            raw_notes          = intel.get("notes") or None
+            agenda             = intel.get("agenda") or None
+            raw_key_points     = intel.get("keyPoints") or []
+            raw_action_points  = intel.get("actionPoints") or []
+            raidd_flags        = intel.get("raidd_flags", {
+                "risks": [], "issues": [], "assumptions": [], "dependencies": [], "decisions": []
             })
-            continue 
 
-        for project in projects:
-            p_id = project.get("id")
-            root_mtgs = project.get("meetings", [])
-            
-            # Identify the project log context
-            project_log = next((item for item in logs if item.get("id") == p_id), {})
-            transcripts = project_log.get("transcripts", [])
-            
-            mtgs_list = []
-            
-            if root_mtgs:
-                # 1. Sort meetings by meetingDate or createdAt to find the latest
-                # Sorting in ascending order so the last one [-1] is the latest
-                sorted_mtgs = sorted(
-                    root_mtgs, 
-                    key=lambda x: x.get('meetingDate') or x.get('createdAt') or ''
+            notes = str(raw_notes) if raw_notes else None
+
+            # ── Prisma nested format — used ONLY for push ──
+            key_points_prisma    = [{"content": str(k)} for k in raw_key_points    if k] if isinstance(raw_key_points,    list) else []
+            action_points_prisma = [{"content": str(a)} for a in raw_action_points if a] if isinstance(raw_action_points, list) else []
+
+            logger.info(
+                f"DEBUG Meeting Payload → "
+                f"aiMeetingSummary: {str(ai_meeting_summary)[:80] if ai_meeting_summary else None}, "
+                f"agenda: {agenda}, notes: {notes}, "
+                f"keyPoints: {key_points_prisma}, actionPoints: {action_points_prisma}"
+            )
+
+            push_meeting_result(
+                meeting_id         = m_id,
+                notes              = notes,
+                agenda             = agenda,
+                ai_meeting_summary = ai_meeting_summary,
+                key_points         = {
+                    "deleteMany": {},
+                    "create": key_points_prisma
+                },
+                action_points      = {
+                    "deleteMany": {},
+                    "create": action_points_prisma
+                },
+                raidd_flags        = raidd_flags
+            )
+
+            # ── Return flat string lists, NOT Prisma format ──
+            result = {
+                "id":               m_id,
+                "notes":            notes,
+                "agenda":           agenda,
+                "aiMeetingSummary": ai_meeting_summary,
+                "keyPoints":        raw_key_points,
+                "actionPoints":     raw_action_points,
+                "raiddFlags":       raidd_flags
+            }
+            results.append(result)
+            logger.info(f"Meeting [{m_id}] for '{p_name}' pushed successfully.")
+
+            # Stop searching further projects if we found the specific meeting
+            if meeting_id:
+                break
+
+        except Exception as e:
+            logger.error(f"Meeting error '{p_name}' [{m_id}]: {e}", exc_info=True)
+
+    logger.info(f"Meeting analysis done. {len(results)} meetings.")
+    return results
+
+
+# ── Document Analysis ─────────────────────────────────────
+def analyze_all_documents(session_data: dict, document_id: str = None):
+    projects = session_data.get("projects", [])
+    logger.info(f"Document analysis...")
+    results = []
+
+    for project in projects:
+        p_name    = project.get("name", "Unknown")
+        documents = project.get("documents", [])
+
+        if not documents:
+            logger.info(f"No documents for '{p_name}'. Skipping.")
+            continue
+
+        # Filter to single document if id is provided
+        if document_id:
+            documents = [d for d in documents if d.get("id") == document_id]
+            if not documents:
+                logger.info(f"No document with id [{document_id}] in project '{p_name}'. Skipping.")
+                continue
+
+        for doc in documents:
+            d_id = doc.get("id")
+            try:
+                intel      = run_document_summary(doc)
+                ai_summary = intel.get("summary", "")
+
+                key_points = [
+                    {"content": str(k)} for k in intel.get("discussion_points", []) if k
+                ]
+                action_points = [
+                    {"content": str(a)} for a in intel.get("action_points", []) if a
+                ]
+
+                push_document_result(
+                    d_id,
+                    ai_summary,
+                    {"deleteMany": {}, "create": key_points},
+                    {"deleteMany": {}, "create": action_points}
                 )
 
-                # 2. Pick only the latest meeting
-                latest_mtg = sorted_mtgs[-1]
-                
-                try:
-                    # 3. Process only the latest meeting through the AI Agent
-                    intel = run_meeting_summary(latest_mtg, transcripts)
-                    
-                    mtgs_list.append({
-                        "meetingId": latest_mtg.get("id"),
-                        "meetingTitle": latest_mtg.get("title") or "Project Meeting",
-                        "summary": intel.get("summary"),
-                        "agenda": {
-                            "meetingTopics": intel.get("agenda", {}).get("meetingTopics", []),
-                            "coreDiscussionPoints": intel.get("agenda", {}).get("coreDiscussionPoints", [])
-                        },
-                        "actionPoints": intel.get("action_points", []),
-                        "discussionPoints": intel.get("discussion_points", []),
-                        "notes": intel.get("notes", ""),
-                        "raiddFlags": {
-                            "risks": intel.get("raidd_flags", {}).get("risks", []),
-                            "assumptions": intel.get("raidd_flags", {}).get("assumptions", []),
-                            "issues": intel.get("raidd_flags", {}).get("issues", []),
-                            "dependencies": intel.get("raidd_flags", {}).get("dependencies", []),
-                            "decisions": intel.get("raidd_flags", {}).get("decisions", [])
-                        }
-                    })
-                except Exception as e:
-                    print(f"Error analyzing latest meeting for project {p_id}: {e}")
+                results.append({
+                    "id":                d_id,
+                    "aiDocumentSummary": ai_summary,
+                    "keyPoints":         key_points,
+                    "actionPoints":      action_points
+                })
+                logger.info(f"Document [{d_id}] pushed.")
 
-            # 4. Append project object to output list
-            output.append({
-                "projectId": p_id,
-                "projectName": project.get("name"),
-                "session": session_name,
-                "meetings": mtgs_list
-            })
-            
-    return output
+            except Exception as e:
+                logger.error(f"Document error [{d_id}]: {e}")
 
-def analyze_all_documents(all_sessions_data):
-    """
-    Generates detailed analysis for every uploaded document.
-    Ensures RAIDD items are simple lists of descriptive strings.
-    """
-    output = []
-    for session_name, data in all_sessions_data.items():
-        projects = data.get("projects", [])
-        logs = data.get("logs", [])
+        # Stop searching further projects if we found the specific document
+        if document_id and results:
+            break
 
-        if not projects:
-            output.append({
-                "projectId": None,
-                "projectName": "No projects found",
-                "session": session_name,
-                "documents": []
-            })
-            continue 
-
-        for project in projects:
-            p_id = project.get("id")
-            
-            # Harvesting docs from root and logs
-            root_docs = project.get("documents", [])
-            project_log = next((item for item in logs if item.get("id") == p_id), {})
-            activities = project_log.get("activities", [])
-            log_docs = [a.get("crudData") for a in activities if a.get("type") == "document" and a.get("crudData")]
-            
-            unique_docs = {d['id']: d for d in (root_docs + log_docs) if d and 'id' in d}.values()
-
-            docs_list = []
-            for doc in unique_docs:
-                try:
-                    intel = run_document_summary(doc)
-                    raw_raidd = intel.get("raidd_flags", {})
-
-                    docs_list.append({
-                        "documentId": doc.get("id"),
-                        "documentName": doc.get("fileName") or doc.get("title"),
-                        "summary": intel.get("summary"),
-                        "actionPoints": intel.get("action_points", []),
-                        "discussionPoints": intel.get("discussion_points", []),
-                        "notes": intel.get("notes", ""),
-                        "raiddFlags": {
-                            "risks": raw_raidd.get("risks", []),
-                            "assumptions": raw_raidd.get("assumptions", []),
-                            "issues": raw_raidd.get("issues", []),
-                            "dependencies": raw_raidd.get("dependencies", []),
-                            "decisions": raw_raidd.get("decisions", [])
-                        }
-                    })
-                except Exception as e:
-                    print(f"Error analyzing document {doc.get('id')}: {e}")
-                    continue
-            
-            output.append({
-                "projectId": p_id,
-                "projectName": project.get("name"),
-                "session": session_name,
-                "documents": docs_list
-            })
-    return output
+    logger.info(f"Document analysis done. {len(results)} documents.")
+    return results

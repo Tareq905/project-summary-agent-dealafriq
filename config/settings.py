@@ -3,51 +3,54 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# 1. Manually find the .env file path
 env_path = Path(__file__).resolve().parent.parent / ".env"
 
-# 2. Debugging
-print(f"--- DEBUG INFO ---")
+print(f"--- DEBUG ---")
 print(f"Looking for .env at: {env_path}")
 print(f"File exists? {env_path.exists()}")
-print(f"------------------")
+print(f"-------------")
 
-# 3. Explicitly load it into the system environment
-load_dotenv(dotenv_path=env_path)
+load_dotenv(dotenv_path=env_path, override=True)
 
 class Settings(BaseSettings):
-    ONGOING_PROJECT_API: str
-    COMPLETED_PROJECT_API: str
-    CANCELLED_PROJECT_API: str
-    ONGOING_LOG_API: str
-    COMPLETED_LOG_API: str
-    CANCELLED_LOG_API: str
-    OPENAI_API_KEY: str
-    PINECONE_API_KEY: str
-    PINECONE_INDEX_NAME: str
-    PINECONE_ENV: str
-    
-    # --- UPDATED TO MATCH YOUR .env FILE NAME ---
-    PINECONE_EMAIL_INDEX_NAME: str 
-    # --------------------------------------------
 
-    ALL_EMAILS_API: str
-    ALL_PROJECTS_PUBLIC_API: str
+    # ── GET APIs ──────────────────────────────────────────
+    PROJECT_GET_API: str
+    MEETING_GET_API: str
+    DOCUMENT_GET_API: str
+    EMAIL_GET_API: str
+    CLIENT_GET_API:   str
 
-    # vendors api
-    VENDOR_MANAGEMENT_API: str
-    PROJECT_MANAGERS_API: str
+    # ── POST / AI-Update APIs ─────────────────────────────
+    AI_UPDATE_PROJECT_API: str
+    AI_UPDATE_WEEKLY_SUMMARY_API: str
+    AI_UPDATE_MEETING_API: str
+    AI_UPDATE_DOCUMENT_API: str
+    AI_UPDATE_EMAIL_API: str
+    AI_DETECTION_API: str
+    CLIENT_PUSH_API: str
 
-    # meeting transcript api
-    MEETING_TRANSCRIPT_API: str
-
+    # ── Auth ──────────────────────────────────────────────
     BACKEND_SERVICE_SECRET: str
 
-    model_config = SettingsConfigDict(extra="ignore")
+    # ── OpenAI ────────────────────────────────────────────
+    OPENAI_API_KEY: str
+
+    # ── Pinecone ──────────────────────────────────────────
+    PINECONE_API_KEY: str
+    PINECONE_INDEX_NAME: str
+    PINECONE_EMAIL_INDEX_NAME: str
+    PINECONE_ENV: str
+
+    model_config = SettingsConfigDict(
+        env_file=str(env_path),
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 try:
     settings = Settings()
+    print("✅ Settings loaded successfully.")
 except Exception as e:
-    print(f"ERROR: Settings validation failed.")
-    print(f"Reason: {e}")
+    print(f"❌ Settings validation failed: {e}")
     raise e

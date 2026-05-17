@@ -1,24 +1,44 @@
-from fetchers.logs_fetcher import fetch_session_logs
-from fetchers.project_fetcher import fetch_session_projects
+import logging
+from fetchers.project_fetcher import fetch_all_projects
+from fetchers.meeting_fetcher import fetch_all_meetings
+from fetchers.document_fetcher import fetch_all_documents
 
-def build_all_sessions_data():
-    sessions = ["ONGOING", "COMPLETED", "CANCELLED"]
-    all_data = {}
+logger = logging.getLogger(__name__)
 
-    for s in sessions:
-        projects = fetch_session_projects(s)
-        logs = fetch_session_logs(s)
-        
-        # DEBUG: Check if data is actually arriving
-        print(f"--- SESSION BUILDER DEBUG ---")
-        print(f"Session: {s}")
-        print(f"Projects Found: {len(projects)}")
-        print(f"Logs Found: {len(logs)}")
-        print(f"-----------------------------")
 
-        all_data[s] = {
-            "projects": projects,
-            "logs": logs
+def build_session_data():
+
+    projects  = fetch_all_projects()
+    meetings  = fetch_all_meetings()
+    documents = fetch_all_documents()
+
+    logger.info(f"📦 Fetched → Projects: {len(projects)} | Meetings: {len(meetings)} | Documents: {len(documents)}")
+
+    meetings_by_project = {}
+    for mtg in meetings:
+        pid = mtg.get("projectId")
+        if pid:
+            meetings_by_project.setdefault(pid, []).append(mtg)
+
+    documents_by_project = {}
+    for doc in documents:
+        pid = doc.get("projectId")
+        if pid:
+            documents_by_project.setdefault(pid, []).append(doc)
+
+    enriched_projects = []
+    for project in projects:
+        pid = project.get("id")
+        enriched = {
+            **project,
+            "meetings":  meetings_by_project.get(pid, []),
+            "documents": documents_by_project.get(pid, [])
         }
-    
-    return all_data
+        enriched_projects.append(enriched)
+        logger.info(
+            f"  ✔ Project '{project.get('name')}' → "
+            f"{len(enriched['meetings'])} meetings, "
+            f"{len(enriched['documents'])} documents"
+        )
+
+    return {"projects": enriched_projects}
