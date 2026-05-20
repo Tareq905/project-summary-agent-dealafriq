@@ -192,3 +192,37 @@ def push_ai_detection(
         "raiddFlags":       raidd_flags
     }
     return _post(settings.AI_DETECTION_API, payload, f"AIDetection[{project_id}]")
+
+# ── 7. Email Draft ────────────────────────────────────────
+# def push_email_draft(
+#     email_id: str,
+#     draft_subject: str,
+#     draft_body: str,
+#     intent_tag: str,
+#     urgency: str,
+#     key_points_addressed: list
+# ) -> bool:
+#     """
+#     Pushes a generated email draft to the backend.
+#     Called by email_draft_orchestrator on both first-time generation
+#     and regeneration requests.
+ 
+#     :param email_id:             The ID of the original email.
+#     :param draft_subject:        The reply subject line.
+#     :param draft_body:           The full assembled draft body (ready-to-send string).
+#     :param intent_tag:           Classified intent (e.g. "Acknowledgement", "Escalation").
+#     :param urgency:              Draft urgency level: "High", "Medium", or "Low".
+#     :param key_points_addressed: List of specific concerns addressed in the draft.
+#     """
+#     url = f"{settings.AI_UPDATE_EMAIL_API}/{email_id}/draft"
+ 
+#     payload = {
+#         "emailId":            email_id,
+#         "draftSubject":       draft_subject,
+#         "draftBody":          draft_body,
+#         "intentTag":          intent_tag,
+#         "urgency":            urgency,
+#         "keyPointsAddressed": key_points_addressed
+#     }
+ 
+#     return _post(url, payload, f"EmailDraft[{email_id}]")
