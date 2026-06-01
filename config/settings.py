@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str
     PINECONE_EMAIL_INDEX_NAME: str
+    PINECONE_EMAIL_INDEX_NAME_SECONDARY: str
     PINECONE_ENV: str
 
     model_config = SettingsConfigDict(

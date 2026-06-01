@@ -2,18 +2,21 @@ import os
 from pinecone import Pinecone
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
-from config.settings import settings 
+from config.settings import settings
 
 # --- INITIALIZATION ---
 
-# 1. IMPORTANT: The model MUST match the one used in ingest.py (text-embedding-3-small)
-# If they don't match, the math will be wrong and you will get no results.
+# 1. OpenAI embeddings — used for FAISS (global) and vendor index
+#    MUST match model used in ingest.py (text-embedding-3-small → 1536 dims)
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-# 2. Initialize Pinecone (For Vendor and Email Intelligence)
+# 2. Initialize Pinecone
 pc = Pinecone(api_key=settings.PINECONE_API_KEY)
-vendor_index = pc.Index(settings.PINECONE_INDEX_NAME)      # The standard vendor index
-email_index = pc.Index(settings.PINECONE_EMAIL_INDEX_NAME)
+
+vendor_index   = pc.Index(settings.PINECONE_INDEX_NAME)       # Vendor intelligence (OpenAI embeddings)
+email_index_v2 = pc.Index(settings.PINECONE_EMAIL_INDEX_NAME) # email-agent-v2 (multilingual-e5-large, 1024 dims)
+
+# NOTE: email-agent (legacy) is no longer used. Client requirement is email-agent-v2 only.
 
 # 3. Load Local FAISS (For Global Governance Rules)
 local_db_path = "rag/vector_store"
@@ -32,26 +35,28 @@ if os.path.exists(local_db_path):
 else:
     print("⚠️ Local FAISS index not found. Global rules will be unavailable.")
 
+
 # --- CORE RETRIEVAL LOGIC ---
 
 def retrieve_context(query, vendor_id=None, mode="global"):
     """
-    A Hybrid Retriever that switches between three intelligence layers.
-    
+    A Hybrid Retriever that switches between intelligence layers.
+
     :param query: The search string.
     :param vendor_id: Required if mode is 'vendor'.
-    :param mode: 
-        'global' -> Searches Local FAISS (Governance Rules).
-        'vendor' -> Searches Pinecone (Vendor Documents) filtered by vendor_id.
-        'email'  -> Searches Pinecone (Advanced Email Intelligence).
+    :param mode:
+        'global' -> Searches Local FAISS (Governance Rules) — OpenAI embeddings (1536 dims).
+        'vendor' -> Searches Pinecone vendor index — OpenAI embeddings (1536 dims).
+        'email'  -> Searches Pinecone email-agent-v2 — Pinecone native inference
+                    using multilingual-e5-large (1024 dims) to match ingestion model.
     """
-    
-    # --- MODE A: VENDOR INTELLIGENCE (Pinecone) ---
+
+    # --- MODE A: VENDOR INTELLIGENCE (Pinecone + OpenAI embeddings) ---
     if mode == "vendor":
         if not vendor_id:
             print("❌ Error: vendor_id is required for 'vendor' mode.")
             return ""
-        
+
         print(f"🔍 [MODE: VENDOR] Searching Pinecone for vendor: {vendor_id}")
         try:
             xq = embeddings.embed_query(query)
@@ -59,7 +64,7 @@ def retrieve_context(query, vendor_id=None, mode="global"):
                 vector=xq,
                 top_k=5,
                 include_metadata=True,
-                filter={"vendorId": {"$eq": vendor_id}} # Strict isolation
+                filter={"vendorId": {"$eq": vendor_id}}
             )
             if not res['matches']:
                 return ""
@@ -68,24 +73,38 @@ def retrieve_context(query, vendor_id=None, mode="global"):
             print(f"❌ Pinecone Vendor Error: {e}")
             return ""
 
-    # --- MODE B: EMAIL INTELLIGENCE (Pinecone) ---
+    # --- MODE B: EMAIL INTELLIGENCE (email-agent-v2 via Pinecone native inference) ---
     elif mode == "email":
-        print(f"🔍 [MODE: EMAIL] Searching Pinecone Email-Agent Index...")
+        print(f"🔍 [MODE: EMAIL] Querying email-agent-v2 (multilingual-e5-large)...")
         try:
-            xq = embeddings.embed_query(query)
-            res = email_index.query(
-                vector=xq,
-                top_k=5,
+            # Use Pinecone's native inference API — MUST match ingestion model
+            # Ingestion used: multilingual-e5-large (1024 dims)
+            embedding_response = pc.inference.embed(
+                model="multilingual-e5-large",
+                inputs=[query],
+                parameters={"input_type": "query", "truncate": "END"}
+            )
+            query_vector = embedding_response[0]["values"]
+
+            res = email_index_v2.query(
+                vector=query_vector,
+                top_k=7,
                 include_metadata=True
             )
+
             if not res['matches']:
+                print("⚠️ [EMAIL] No results from email-agent-v2.")
                 return ""
-            return "\n".join([m['metadata']['text'] for m in res['matches']])
+
+            texts = [m['metadata']['text'] for m in res['matches']]
+            print(f"✅ [EMAIL] Retrieved {len(texts)} chunks from email-agent-v2.")
+            return "\n".join(texts)
+
         except Exception as e:
-            print(f"❌ Pinecone Email Error: {e}")
+            print(f"❌ Pinecone email-agent-v2 Error: {e}")
             return ""
 
-    # --- MODE C: GLOBAL GOVERNANCE (FAISS) ---
+    # --- MODE C: GLOBAL GOVERNANCE (FAISS + OpenAI embeddings) ---
     else:
         print(f"🔍 [MODE: GLOBAL] Searching Local FAISS...")
         if db:
