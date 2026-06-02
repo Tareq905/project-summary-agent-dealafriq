@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     MEETING_GET_API: str
     DOCUMENT_GET_API: str
     EMAIL_GET_API: str
-    CLIENT_GET_API:   str
+    CLIENT_GET_API: str
 
     # ── POST / AI-Update APIs ─────────────────────────────
     AI_UPDATE_PROJECT_API: str
@@ -39,8 +39,7 @@ class Settings(BaseSettings):
     # ── Pinecone ──────────────────────────────────────────
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str
-    PINECONE_EMAIL_INDEX_NAME: str
-    PINECONE_EMAIL_INDEX_NAME_SECONDARY: str
+    PINECONE_EMAIL_INDEX_NAME: str  # email-agent-v2
     PINECONE_ENV: str
 
     model_config = SettingsConfigDict(
