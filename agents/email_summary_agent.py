@@ -9,8 +9,9 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY)
 def run_email_analysis(email_data, projects_context):
     """
     Email Intelligence Agent.
-    Uses email-agent-v2 (Pinecone, multilingual-e5-large, 1024 dims) as primary RAIDD knowledge.
-    Falls back to FAISS global governance for structural rules.
+    Extracts 7 categories per training data:
+    Risks, Issues, Dependencies, Assumptions, Tasks, Actions, Next Steps.
+    Uses email-agent-v2 (Pinecone, multilingual-e5-large, 1024 dims).
     """
 
     # ── 1. RAG RETRIEVAL ─────────────────────────────────────
@@ -20,7 +21,7 @@ def run_email_analysis(email_data, projects_context):
     )
 
     email_raidd_knowledge = retrieve_context(
-        "RAIDD risk issue assumption decision dependency email detection patterns action items next steps",
+        "RAIDD risk issue assumption decision dependency task action next step email extraction patterns",
         mode="email"
     )
 
@@ -39,31 +40,31 @@ def run_email_analysis(email_data, projects_context):
 
     # ── 3. SYSTEM INSTRUCTION ────────────────────────────────
     system_instruction = """
-    You are a Senior Project Management Intelligence Auditor specializing in RAIDD detection from emails.
+    You are a Senior Project Management Intelligence Auditor trained to extract
+    exactly 7 categories from project management emails.
 
-    YOUR KNOWLEDGE BASE PRIORITY:
-    1. [PRIMARY RAIDD KNOWLEDGE — Client Trained]: Your main detection reference.
-       Use the patterns, definitions, and examples from this layer first.
-    2. [GLOBAL GOVERNANCE]: Structural rules for output formatting.
+    THE 7 EXTRACTION CATEGORIES (from training data):
+    1. risks       - Potential future problems, threats, uncertainties
+    2. issues      - Current active problems, blockers, failures
+    3. dependencies - Waiting-on relationships, prerequisites, blocked-by chains
+    4. assumptions  - Things taken for granted, unvalidated expectations
+    5. tasks        - Work items assigned to people or teams (e.g. "X needs to do Y")
+    6. actions      - Explicit ACTION items assigned to named individuals (e.g. "ACTION (Name):")
+    7. nextSteps    - "Next step:" statements about what happens next
 
-    YOUR AUDIT PROCESS:
-    1. READ the entire email body carefully, sentence by sentence.
-    2. DETECT all 5 RAIDD categories — risks, issues, decisions, assumptions, dependencies.
-    3. NEVER leave decisions empty if any of these exist in the email:
-       - ACTION items assigned to named people
-       - "Next step:" statements
-       - Approvals needed or requested
-       - Go/no-go points
-       - Change requests being submitted
-       - Anything that has been agreed or needs to be confirmed
-    4. CROSS-REFERENCE email claims against project reality for discrepancies.
-    5. SUB-TYPE every RAIDD item.
-    6. GENERATE a professional reply.
+    CRITICAL DISTINCTION:
+    - tasks: "[Person/Team] needs to [do something]" or "[Person] is tasked with..."
+    - actions: Starts with "ACTION (Name):" — explicitly labelled action items
+    - nextSteps: Starts with "Next step:" — explicitly labelled next steps
+    - These are THREE SEPARATE categories. NEVER mix them together.
 
     STRICT OUTPUT RULES:
     - Return strictly valid JSON only.
-    - Each RAIDD field MUST be a LIST OF STRINGS.
-    - decisions MUST NEVER be empty if action items, next steps, or approvals exist in the email.
+    - All 7 fields must be present even if empty list.
+    - Each item must be the EXACT extracted text from the email — not a paraphrase.
+    - actions MUST only contain items explicitly prefixed with "ACTION (Name):"
+    - nextSteps MUST only contain items explicitly prefixed with "Next step:"
+    - tasks are work items WITHOUT the ACTION or Next step prefix.
     - generatedReply must never be null or empty.
     """
 
@@ -84,84 +85,78 @@ def run_email_analysis(email_data, projects_context):
     Sender: {email_data.get('from_name', 'Unknown')}
 
     ══════════════════════════════════════════════════════
-    RAIDD DETECTION RULES — MANDATORY. READ EVERY LINE.
+    EXTRACTION RULES — READ THE EMAIL SENTENCE BY SENTENCE
     ══════════════════════════════════════════════════════
 
-    - risks:
-      Detect: technical failures, resource threats, timeline risks, security concerns,
-      performance issues, compliance gaps, third-party risks, scope creep.
-      Trigger phrases: "at risk", "concern", "worried", "could fail", "may impact",
-      "single point of failure", "no knowledge transfer", "unvetted", "bypassed".
+    1. RISKS — Extract potential future threats/problems:
+       Signals: "risk", "could", "may", "might", "concerned about",
+       "potential", "at risk", "if X then Y", "impact", "threat",
+       "flagged a risk", "there is a risk that"
 
-    - issues:
-      Detect: current active blockers, bugs, failures, unresolved problems,
-      SLA breaches, system errors, audit failures.
-      Trigger phrases: "failing", "error", "unresolved", "intermittent", "exceeds SLA",
-      "not provided an ETA", "discrepancy", "misconfigured", "pending for X days/weeks".
+    2. ISSUES — Extract current active problems/blockers:
+       Signals: "issue", "problem", "failed", "failing", "blocked",
+       "unavailable", "error", "unresolved", "breach", "cannot proceed",
+       "has been raised", "remains unresolved", "critical issue"
 
-    - decisions:
-      ⚠️ THIS IS CRITICAL — DO NOT LEAVE EMPTY IF ANY OF THESE EXIST:
-      - "ACTION (name):" → this is a decision/assigned action — MUST be captured
-      - "Next step:" → this is a decision about what happens next — MUST be captured
-      - "We will..." → committed decision — MUST be captured
-      - "needs to complete", "needs to compile", "needs to schedule" → assigned decisions
-      - "pending approval", "submit the change request", "written confirmation needed"
-      - "CAB approval", "change control", "sign-off", "confirm with"
-      Every ACTION item and every Next Step in this email is a decision. Capture ALL of them.
+    3. DEPENDENCIES — Extract waiting-on / blocked-by relationships:
+       Signals: "dependent on", "depends on", "waiting for",
+       "before we can", "cannot proceed until", "is a dependency",
+       "requires X from Y", "outside our control"
 
-    - assumptions:
-      Detect: unvalidated expectations, things taken for granted, implied agreements.
-      Trigger phrases: "assuming", "will be sufficient", "typically takes", "expected",
-      "I believe", "should be ready", "outside our control".
+    4. ASSUMPTIONS — Extract things taken for granted:
+       Signals: "assuming", "we assume", "the plan assumes",
+       "assumes that", "based on the assumption", "expected to",
+       "assuming that X will", "on the basis that"
 
-    - dependencies:
-      Detect: waiting-on relationships, blocked-by chains, prerequisite tasks,
-      external blockers, third-party dependencies.
-      Trigger phrases: "depends on", "dependent on", "waiting for", "pending from",
-      "before we can", "request submitted", "need X before Y".
+    5. TASKS — Extract work items assigned to people/teams:
+       Signals: "[Person] needs to", "[Team] needs to",
+       "[Person] is tasked with", "we need to [do X]",
+       "[Name] needs to [verb]", "[Role] needs to complete"
+       NOTE: Do NOT include items that start with "ACTION" or "Next step"
 
-    ══════════════════════════════════════════════════════
-    STRICT RULES FOR ALL CATEGORIES:
-    ══════════════════════════════════════════════════════
-    - Each item MUST include sub-type prefix: e.g., "Action Decision: ...", "Resource Risk: ..."
-    - Each item MUST be 2-3 sentences — specific, factual, grounded in the email.
-    - Reference actual names (Grace, Carlos, Kate, Chloe), systems, dates, numbers from email.
-    - Do NOT write generic statements.
-    - decisions MUST have at least 3-4 items for this email — there are multiple ACTION items
-      and Next Steps explicitly listed.
+    6. ACTIONS — Extract ONLY explicit ACTION items:
+       Pattern: "ACTION (Name): [description]"
+       Extract the FULL text including "ACTION (Name):" prefix.
+       ONLY items explicitly labelled as ACTION count here.
+
+    7. NEXT STEPS — Extract ONLY explicit Next Step items:
+       Pattern: "Next step: [description]"
+       Extract the FULL text including "Next step:" prefix.
+       ONLY items explicitly labelled as "Next step:" count here.
 
     ══════════════════════════════════════════════════════
-    SUMMARY RULES — MANDATORY
+    SUMMARY RULES
     ══════════════════════════════════════════════════════
     - MUST start with 🔹
-    - Intelligence brief style — dense with facts, zero filler.
-    - Include: WHO sent it, WHAT risks/issues/decisions were raised, WHAT action is pending.
-    - Reference actual names, numbers, systems, dates.
-    - Length: 2-3 sentences max.
+    - Dense with facts — WHO sent it, WHAT was flagged, WHAT action pending
+    - Reference actual names, numbers, systems from the email
+    - 2-3 sentences max
 
     ══════════════════════════════════════════════════════
-    GENERATED REPLY RULES — MANDATORY
+    GENERATED REPLY RULES
     ══════════════════════════════════════════════════════
-    - Address sender by name.
-    - Acknowledge key points raised.
-    - Provide clear next steps.
-    - Professional tone, 3-5 sentences.
-    - NEVER return null or empty string.
+    - Address sender by name
+    - Acknowledge key points
+    - Provide next steps
+    - Professional tone, 3-5 sentences
+    - NEVER null or empty
 
     RETURN THIS EXACT JSON STRUCTURE:
     {{
         "flag": "Red | Amber | Green",
         "emailId": "{email_data.get('id')}",
-        "summary": "🔹 [Specific, fact-dense intelligence brief]",
-        "category": ["Issue", "Risk", "Dependency", "Decision", "Assumption", "Informational"],
+        "summary": "🔹 [fact-dense intelligence brief]",
+        "category": ["Risk", "Issue", "Dependency", "Assumption", "Task", "Action", "NextStep"],
         "sentiment": "positive | negative | neutral",
-        "generatedReply": "Professional reply to the email.",
+        "generatedReply": "Professional reply.",
         "raiddAnalysis": {{
-            "risks":        ["Sub-type: [Type] — [2-3 sentence description]"],
-            "issues":       ["Sub-type: [Type] — [2-3 sentence description]"],
-            "decisions":    ["Sub-type: [Type] — [2-3 sentence description]"],
-            "assumptions":  ["Sub-type: [Type] — [2-3 sentence description]"],
-            "dependencies": ["Sub-type: [Type] — [2-3 sentence description]"]
+            "risks":        ["exact extracted text from email"],
+            "issues":       ["exact extracted text from email"],
+            "dependencies": ["exact extracted text from email"],
+            "assumptions":  ["exact extracted text from email"],
+            "tasks":        ["exact extracted text from email"],
+            "actions":      ["ACTION (Name): exact extracted text"],
+            "nextSteps":    ["Next step: exact extracted text"]
         }}
     }}
     """

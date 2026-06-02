@@ -13,7 +13,6 @@ def analyze_all_emails(email_id: str = None):
     emails   = fetch_all_emails()
     projects = fetch_all_projects_for_context()
 
-    # Filter to single email if id is provided
     if email_id:
         emails = [e for e in emails if e.get("id") == email_id]
         if not emails:
@@ -39,12 +38,15 @@ def analyze_all_emails(email_id: str = None):
             if analysis_result:
                 raidd = analysis_result.get("raiddAnalysis", {})
 
+                # ── Build raidd_data with all 7 categories ──
                 raidd_data = {
                     "risks":        [{"data": d} for d in raidd.get("risks", [])        if d],
                     "issues":       [{"data": d} for d in raidd.get("issues", [])       if d],
                     "assumptions":  [{"data": d} for d in raidd.get("assumptions", [])  if d],
-                    "decisions":    [{"data": d} for d in raidd.get("decisions", [])    if d],
                     "dependencies": [{"data": d} for d in raidd.get("dependencies", []) if d],
+                    "tasks":        [{"data": d} for d in raidd.get("tasks", [])        if d],
+                    "actions":      [{"data": d} for d in raidd.get("actions", [])      if d],
+                    "nextSteps":    [{"data": d} for d in raidd.get("nextSteps", [])    if d],
                 }
 
                 push_email_result(
@@ -57,22 +59,20 @@ def analyze_all_emails(email_id: str = None):
                 )
 
                 output.append({
-                    "flag":     analysis_result.get("flag", "Green"),
-                    "emailId":  analysis_result.get("emailId", e_id),
-                    "summary":  analysis_result.get("summary", ""),
-                    "category": analysis_result.get("category", ["Informational"]),
+                    "flag":      analysis_result.get("flag", "Green"),
+                    "emailId":   analysis_result.get("emailId", e_id),
+                    "summary":   analysis_result.get("summary", ""),
+                    "category":  analysis_result.get("category", []),
                     "sentiment": analysis_result.get("sentiment", "neutral"),
-                    "raiddAnalysis": analysis_result.get("raiddAnalysis", {
-                        "risks": [], "issues": [], "decisions": [], "assumptions": [], "dependencies": []
-                    }),
+                    "raiddAnalysis": raidd,
                     "additional_info": {
                         "category":       email.get("category"),
                         "receivedAt":     email.get("receivedAt"),
                         "gmailMessageId": email.get("gmailMessageId")
                     },
                     "generatedReply": analysis_result.get("generatedReply"),
-                    "vendor":         None,
-                    "type":           "gmail"
+                    "vendor": None,
+                    "type":   "gmail"
                 })
                 logger.info(f"✅ Successfully analyzed and pushed email: {e_id}")
             else:

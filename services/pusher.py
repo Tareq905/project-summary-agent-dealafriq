@@ -76,10 +76,10 @@ def push_meeting_result(
     meeting_id: str,
     notes: str,
     agenda: str,
-    key_points,       
+    key_points,
     action_points,
     raidd_flags: dict = None,
-    ai_meeting_summary: str = None  
+    ai_meeting_summary: str = None
 ):
     url = f"{settings.AI_UPDATE_MEETING_API}/{meeting_id}"
     raidd = raidd_flags or {}
@@ -144,7 +144,14 @@ def push_document_result(document_id: str, ai_summary: str, key_points, action_p
 
 
 # ── 5. Email AI Result ────────────────────────────────────
-def push_email_result(email_id: str, summary: str, tasks: list, raidd_category: list, raidd_data: dict, generated_reply: str = ""):
+def push_email_result(
+    email_id: str,
+    summary: str,
+    tasks: list,
+    raidd_category: list,
+    raidd_data: dict,
+    generated_reply: str = ""
+):
     url = f"{settings.AI_UPDATE_EMAIL_API}/{email_id}"
 
     payload = {
@@ -155,12 +162,16 @@ def push_email_result(email_id: str, summary: str, tasks: list, raidd_category: 
         "projectRisks":        [{"data": d["data"]} for d in raidd_data.get("risks", [])        if d],
         "projectIssues":       [{"data": d["data"]} for d in raidd_data.get("issues", [])       if d],
         "projectAssumptions":  [{"data": d["data"]} for d in raidd_data.get("assumptions", [])  if d],
-        "projectDecisions":    [{"data": d["data"]} for d in raidd_data.get("decisions", [])    if d],
         "projectDependencies": [{"data": d["data"]} for d in raidd_data.get("dependencies", []) if d],
+        "projectTasks":        [{"data": d["data"]} for d in raidd_data.get("tasks", [])        if d],
+        "projectActions":      [{"data": d["data"]} for d in raidd_data.get("actions", [])      if d],
+        "projectNextSteps":    [{"data": d["data"]} for d in raidd_data.get("nextSteps", [])    if d],
     }
 
-    for key in ["projectRisks", "projectIssues", "projectAssumptions", "projectDecisions", "projectDependencies"]:
-        if not payload[key]:
+    # Remove empty lists to keep payload clean
+    for key in ["projectRisks", "projectIssues", "projectAssumptions", "projectDependencies",
+                 "projectTasks", "projectActions", "projectNextSteps"]:
+        if key in payload and not payload[key]:
             del payload[key]
 
     return _post(url, payload, f"Email[{email_id}]")
@@ -192,37 +203,3 @@ def push_ai_detection(
         "raiddFlags":       raidd_flags
     }
     return _post(settings.AI_DETECTION_API, payload, f"AIDetection[{project_id}]")
-
-# ── 7. Email Draft ────────────────────────────────────────
-# def push_email_draft(
-#     email_id: str,
-#     draft_subject: str,
-#     draft_body: str,
-#     intent_tag: str,
-#     urgency: str,
-#     key_points_addressed: list
-# ) -> bool:
-#     """
-#     Pushes a generated email draft to the backend.
-#     Called by email_draft_orchestrator on both first-time generation
-#     and regeneration requests.
- 
-#     :param email_id:             The ID of the original email.
-#     :param draft_subject:        The reply subject line.
-#     :param draft_body:           The full assembled draft body (ready-to-send string).
-#     :param intent_tag:           Classified intent (e.g. "Acknowledgement", "Escalation").
-#     :param urgency:              Draft urgency level: "High", "Medium", or "Low".
-#     :param key_points_addressed: List of specific concerns addressed in the draft.
-#     """
-#     url = f"{settings.AI_UPDATE_EMAIL_API}/{email_id}/draft"
- 
-#     payload = {
-#         "emailId":            email_id,
-#         "draftSubject":       draft_subject,
-#         "draftBody":          draft_body,
-#         "intentTag":          intent_tag,
-#         "urgency":            urgency,
-#         "keyPointsAddressed": key_points_addressed
-#     }
- 
-#     return _post(url, payload, f"EmailDraft[{email_id}]")
